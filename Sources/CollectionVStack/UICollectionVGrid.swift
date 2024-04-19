@@ -8,6 +8,11 @@ import SwiftUI
 //       - deadlocks when using environment `RefreshAction`
 // TODO: infinite? (like CollectionHStack carousel)
 // TODO: full paging scrolling layout?
+// TODO: Fix TODO data bug below
+//       - if updated too quickly, then currentHashes count != data count and
+//         this will mainly lead to crashes with divide by 0/section count incorrect
+//       - this will probably want to be fixed because `reloadData` has to be used
+//         so this won't allow add/remove/move animations
 
 // MARK: UICollectionVGrid
 
@@ -126,9 +131,14 @@ public class UICollectionVGrid<Element: Hashable>: UIView,
         if !changes.isEmpty {
             data = newData
 
-            collectionView.reload(using: changes) { _ in
-                self.currentHashes = newHashes
-            }
+            // TODO: Fix if necessary? See comment at top of file.
+            
+//            collectionView.reload(using: changes) { _ in
+//                self.currentHashes = newHashes
+//            }
+            
+            currentHashes = newHashes
+            collectionView.reloadData()
         }
 
         // layout
@@ -189,7 +199,10 @@ public class UICollectionVGrid<Element: Hashable>: UIView,
             for: indexPath
         ) as! HostingCollectionViewCell
 
-        let item = data.wrappedValue[indexPath.row % data.wrappedValue.count]
+        // TODO: Fix if necessary? See comment at top of file.
+        
+        // let item = data.wrappedValue[indexPath.row % data.wrappedValue.count]
+        let item = data.wrappedValue[indexPath.row % currentHashes.count]
         let location = CollectionVGridLocation(column: indexPath.row % columns, row: indexPath.row / columns)
         cell.setupHostingView(with: viewProvider(item, location))
         return cell

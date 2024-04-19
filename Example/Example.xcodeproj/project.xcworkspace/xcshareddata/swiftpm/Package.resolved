@@ -1,4 +1,5 @@
 {
+  "originHash" : "8b0127e8ca2c40bcace11d987664cc4b1877e287a8edc4548fadca7af766f1b5",
   "pins" : [
     {
       "identity" : "differencekit",
@@ -19,5 +20,5 @@
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }
