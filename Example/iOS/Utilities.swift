@@ -1,7 +1,7 @@
 import SwiftUI
 
 func colorWheel(radius: Int) -> Color {
-    Color(hue: Double(radius) / 360, saturation: 1, brightness: 1)
+    Color(hue: Double(radius % 360) / 360, saturation: 1, brightness: 1)
 }
 
 struct SizePreferenceKey: PreferenceKey {
