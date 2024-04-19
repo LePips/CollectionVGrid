@@ -42,39 +42,37 @@ struct ContentView: View {
     var gridType: GridType = .grid
 
     var body: some View {
-        CollectionVGrid(
-            $colors,
-            layout: $layout
-        ) { color in
-            Button {
-                switch gridType {
-                case .grid:
-                    gridType = .list
-                    layout = gridType.layout
-                case .list:
-                    gridType = .grid
-                    layout = gridType.layout
+        HStack {
+            Color.red
+                .opacity(0.5)
+            
+            CollectionVGrid(
+                $colors,
+                layout: $layout
+            ) { color in
+                Button {
+                    switch gridType {
+                    case .grid:
+                        gridType = .list
+                        layout = gridType.layout
+                    case .list:
+                        gridType = .grid
+                        layout = gridType.layout
+                    }
+                } label: {
+                    switch gridType {
+                    case .grid:
+                        colorWheel(radius: color)
+                            .aspectRatio(2 / 3, contentMode: .fill)
+                            .cornerRadius(5)
+                    case .list:
+                        colorWheel(radius: color)
+                            .frame(height: 100)
+                            .cornerRadius(5)
+                    }
                 }
-            } label: {
-                switch gridType {
-                case .grid:
-                    colorWheel(radius: color)
-                        .aspectRatio(2 / 3, contentMode: .fill)
-                        .cornerRadius(5)
-                case .list:
-                    colorWheel(radius: color)
-                        .frame(height: 100)
-                        .cornerRadius(5)
-                }
+                .buttonStyle(.card)
             }
-            .buttonStyle(.card)
         }
-        .onReachedBottomEdge(offset: .offset(100)) {
-            print("Reached bottom")
-        }
-        .onReachedTopEdge(offset: .offset(100)) {
-            print("Reached top")
-        }
-        .ignoresSafeArea()
     }
 }

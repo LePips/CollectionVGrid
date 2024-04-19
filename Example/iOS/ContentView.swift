@@ -5,7 +5,8 @@ import SwiftUI
 struct ContentView: View {
 
     @State
-    var colors = OrderedSet((0 ..< 360).map { colorWheel(radius: $0) })
+//    var colors = OrderedSet((0 ..< 360).map { colorWheel(radius: $0) })
+    var numbers = OrderedSet(Array(0 ..< 360))
     @State
     var orientation: LayoutOrientation = .landscape
     @State
@@ -16,22 +17,29 @@ struct ContentView: View {
     var vGridLayout: CollectionVGridLayout = .columns(3)
 
     @StateObject
-    var proxy = CollectionVGridProxy<Color>()
+    var proxy = CollectionVGridProxy<Int>()
 
     var body: some View {
         NavigationView {
             CollectionVGrid(
-                $colors,
+                $numbers,
                 layout: $vGridLayout
             ) { color in
                 switch layout {
                 case .grid:
-                    GridItem(color: color, orientation: orientation)
+                    GridItem(color: colorWheel(radius: color), orientation: orientation)
                 case .list:
-                    ListRow(color: color, orientation: orientation)
+                    ListRow(color: colorWheel(radius: color), orientation: orientation)
                 }
             }
             .proxy(proxy)
+            .refreshable {
+                print("here")
+                
+                try! await Task.sleep(nanoseconds: 2_000_000_000)
+                
+                print("there")
+            }
             .ignoresSafeArea(edges: .bottom)
             .navigationTitle("CollectionVGrid")
             .navigationBarTitleDisplayMode(.inline)
