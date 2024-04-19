@@ -41,8 +41,7 @@ public struct CollectionVGrid<Element: Hashable>: UIViewRepresentable {
             onReachedTopEdge: onReachedTopEdge,
             onReachedTopEdgeOffset: onReachedTopEdgeOffset,
             proxy: proxy,
-            viewProvider: viewProvider,
-            refreshAction: context.environment.refresh
+            viewProvider: viewProvider
         )
     }
 

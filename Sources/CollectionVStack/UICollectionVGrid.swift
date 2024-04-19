@@ -3,9 +3,11 @@ import OrderedCollections
 import SwiftUI
 
 // TODO: sections of items?
-// TODO: customize layout change animation
+// TODO: customize layout change animation?
 // TODO: figure out refreshable
+//       - deadlocks when using environment `RefreshAction`
 // TODO: infinite? (like CollectionHStack carousel)
+// TODO: full paging scrolling layout?
 
 // MARK: UICollectionVGrid
 
@@ -27,8 +29,6 @@ public class UICollectionVGrid<Element: Hashable>: UIView,
     private let onReachedTopEdgeOffset: CollectionVGridEdgeOffset
     private var onReachedEdgeStore: Set<Edge>
     private let viewProvider: (Element, CollectionVGridLocation) -> any View
-    
-    private let refreshAction: RefreshAction?
 
     // MARK: init
 
@@ -40,9 +40,7 @@ public class UICollectionVGrid<Element: Hashable>: UIView,
         onReachedTopEdge: @escaping () -> Void,
         onReachedTopEdgeOffset: CollectionVGridEdgeOffset,
         proxy: CollectionVGridProxy<Element>?,
-        viewProvider: @escaping (Element, CollectionVGridLocation) -> any View,
-        
-        refreshAction: RefreshAction?
+        viewProvider: @escaping (Element, CollectionVGridLocation) -> any View
     ) {
         self.columns = 1
         self.currentHashes = []
@@ -55,8 +53,6 @@ public class UICollectionVGrid<Element: Hashable>: UIView,
         self.onReachedTopEdgeOffset = onReachedTopEdgeOffset
         self.onReachedEdgeStore = []
         self.viewProvider = viewProvider
-        
-        self.refreshAction = refreshAction
 
         super.init(frame: .zero)
 
@@ -83,14 +79,6 @@ public class UICollectionVGrid<Element: Hashable>: UIView,
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.alwaysBounceVertical = true
-        
-        #if os(iOS)
-        if let _ = refreshAction {
-            let control = UIRefreshControl()
-            control.addTarget(self, action: #selector(onRefresh), for: .valueChanged)
-            collectionView.refreshControl = control
-        }
-        #endif
 
         addSubview(collectionView)
 
@@ -103,21 +91,6 @@ public class UICollectionVGrid<Element: Hashable>: UIView,
 
         return collectionView
     }()
-    
-    #if os(iOS)
-    @objc
-    private func onRefresh(control: UIRefreshControl) {
-        control.beginRefreshing()
-        
-        Task {
-            await refreshAction?()
-            
-            await MainActor.run {
-                control.endRefreshing()
-            }
-        }
-    }
-    #endif
 
     // MARK: layoutSubviews
 
