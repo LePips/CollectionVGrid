@@ -1,15 +1,5 @@
 import SwiftUI
 
-enum LayoutOrientation: String {
-    case landscape = "Landscape"
-    case portrait = "Portrait"
-}
-
-enum LayoutType: String {
-    case grid = "Grid"
-    case list = "List"
-}
-
 struct LayoutMenu: View {
 
     @Binding

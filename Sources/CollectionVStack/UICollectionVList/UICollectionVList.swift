@@ -1,6 +1,7 @@
 import DifferenceKit
 import SwiftUI
 
+#if !os(tvOS)
 public class UICollectionVList<Element, Data: Collection, ID: Hashable>:
     UIView,
     UICollectionViewDataSource,
@@ -203,3 +204,4 @@ public class UICollectionVList<Element, Data: Collection, ID: Hashable>:
         return cell
     }
 }
+#endif

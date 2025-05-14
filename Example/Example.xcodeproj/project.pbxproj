@@ -14,12 +14,14 @@
 		E14B26B02B15B30800330583 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14B26AF2B15B30800330583 /* iOSApp.swift */; };
 		E14B26B22B15B30800330583 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14B26B12B15B30800330583 /* ContentView.swift */; };
 		E14B26B42B15B30900330583 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E14B26B32B15B30900330583 /* Assets.xcassets */; };
-		E172D3AB2BAB877C007B4647 /* OnEdgeColorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E172D3AA2BAB877C007B4647 /* OnEdgeColorView.swift */; };
+		E1D5A4762D079958004D18B7 /* IdentifiedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = E1D5A4752D079958004D18B7 /* IdentifiedCollections */; };
 		E1D670E52B193C69006161A9 /* CollectionVGrid in Frameworks */ = {isa = PBXBuildFile; productRef = E1D670E42B193C69006161A9 /* CollectionVGrid */; };
 		E1D670ED2B193C8D006161A9 /* tvOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1D670EC2B193C8D006161A9 /* tvOSApp.swift */; };
 		E1D670EF2B193C8D006161A9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1D670EE2B193C8D006161A9 /* ContentView.swift */; };
 		E1D670F12B193C8D006161A9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E1D670F02B193C8D006161A9 /* Assets.xcassets */; };
 		E1D670F92B193CAE006161A9 /* CollectionVGrid in Frameworks */ = {isa = PBXBuildFile; productRef = E1D670F82B193CAE006161A9 /* CollectionVGrid */; };
+		E1FDD6E72DD513AD00E03341 /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = E114349D2B9B915A00D087ED /* Utilities.swift */; };
+		E1FDD6E92DD5145B00E03341 /* GridItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11434A12B9B92D300D087ED /* GridItem.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,7 +33,6 @@
 		E14B26AF2B15B30800330583 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		E14B26B12B15B30800330583 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E14B26B32B15B30900330583 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		E172D3AA2BAB877C007B4647 /* OnEdgeColorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnEdgeColorView.swift; sourceTree = "<group>"; };
 		E1D670EA2B193C8D006161A9 /* tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tvOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1D670EC2B193C8D006161A9 /* tvOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = tvOSApp.swift; sourceTree = "<group>"; };
 		E1D670EE2B193C8D006161A9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -44,6 +45,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E1D670E52B193C69006161A9 /* CollectionVGrid in Frameworks */,
+				E1D5A4762D079958004D18B7 /* IdentifiedCollections in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -61,10 +63,8 @@
 		E11434A32B9BA49D00D087ED /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				E11434A12B9B92D300D087ED /* GridItem.swift */,
 				E114349B2B9B8DE700D087ED /* LayoutMenu.swift */,
 				E114349F2B9B928800D087ED /* ListRow.swift */,
-				E172D3AA2BAB877C007B4647 /* OnEdgeColorView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -74,6 +74,8 @@
 			children = (
 				E14B26AE2B15B30800330583 /* iOS */,
 				E1D670EB2B193C8D006161A9 /* tvOS */,
+				E1FDD6E82DD513B600E03341 /* Shared */,
+				E1D5A4742D079958004D18B7 /* Frameworks */,
 				E14B26AD2B15B30800330583 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -93,10 +95,16 @@
 				E11434A32B9BA49D00D087ED /* Components */,
 				E14B26AF2B15B30800330583 /* iOSApp.swift */,
 				E14B26B12B15B30800330583 /* ContentView.swift */,
-				E114349D2B9B915A00D087ED /* Utilities.swift */,
 				E14B26B32B15B30900330583 /* Assets.xcassets */,
 			);
 			path = iOS;
+			sourceTree = "<group>";
+		};
+		E1D5A4742D079958004D18B7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		E1D670EB2B193C8D006161A9 /* tvOS */ = {
@@ -107,6 +115,15 @@
 				E1D670F02B193C8D006161A9 /* Assets.xcassets */,
 			);
 			path = tvOS;
+			sourceTree = "<group>";
+		};
+		E1FDD6E82DD513B600E03341 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				E11434A12B9B92D300D087ED /* GridItem.swift */,
+				E114349D2B9B915A00D087ED /* Utilities.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -127,6 +144,7 @@
 			name = iOS;
 			packageProductDependencies = (
 				E1D670E42B193C69006161A9 /* CollectionVGrid */,
+				E1D5A4752D079958004D18B7 /* IdentifiedCollections */,
 			);
 			productName = Example;
 			productReference = E14B26AC2B15B30800330583 /* iOS.app */;
@@ -181,6 +199,7 @@
 			mainGroup = E14B26A32B15B30800330583;
 			packageReferences = (
 				E1D670E32B193C69006161A9 /* XCLocalSwiftPackageReference ".." */,
+				E1D5A4732D079931004D18B7 /* XCRemoteSwiftPackageReference "swift-identified-collections" */,
 			);
 			productRefGroup = E14B26AD2B15B30800330583 /* Products */;
 			projectDirPath = "";
@@ -218,7 +237,6 @@
 			files = (
 				E11434A22B9B92D300D087ED /* GridItem.swift in Sources */,
 				E14B26B22B15B30800330583 /* ContentView.swift in Sources */,
-				E172D3AB2BAB877C007B4647 /* OnEdgeColorView.swift in Sources */,
 				E114349C2B9B8DE700D087ED /* LayoutMenu.swift in Sources */,
 				E114349E2B9B915A00D087ED /* Utilities.swift in Sources */,
 				E14B26B02B15B30800330583 /* iOSApp.swift in Sources */,
@@ -230,7 +248,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E1FDD6E72DD513AD00E03341 /* Utilities.swift in Sources */,
 				E1D670EF2B193C8D006161A9 /* ContentView.swift in Sources */,
+				E1FDD6E92DD5145B00E03341 /* GridItem.swift in Sources */,
 				E1D670ED2B193C8D006161A9 /* tvOSApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -374,7 +394,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -405,7 +425,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -442,7 +462,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 15.0;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
 			};
 			name = Debug;
 		};
@@ -469,7 +489,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 15.0;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
 			};
 			name = Release;
 		};
@@ -512,7 +532,23 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		E1D5A4732D079931004D18B7 /* XCRemoteSwiftPackageReference "swift-identified-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-identified-collections";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		E1D5A4752D079958004D18B7 /* IdentifiedCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1D5A4732D079931004D18B7 /* XCRemoteSwiftPackageReference "swift-identified-collections" */;
+			productName = IdentifiedCollections;
+		};
 		E1D670E42B193C69006161A9 /* CollectionVGrid */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CollectionVGrid;

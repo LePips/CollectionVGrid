@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if !os(tvOS)
 extension CollectionVList {
     
     public func onRowDelete(title: String = "Delete", perform action: @escaping (Element) -> Void) -> Self {
@@ -12,3 +13,4 @@ extension CollectionVList {
             .copy(modifying: \.deleteActionTitle, to: title)
     }
 }
+#endif

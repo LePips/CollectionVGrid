@@ -3,7 +3,7 @@ import SwiftUI
 struct ListRow: View {
 
     @State
-    private var contentWidth: CGFloat = 0
+    private var contentSize: CGSize = .zero
 
     let color: Color
     let orientation: LayoutOrientation
@@ -33,14 +33,12 @@ struct ListRow: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-                .onSizeChanged { newSize in
-                    contentWidth = newSize.width
-                }
+                .trackingSize($contentSize)
             }
 
             Color.secondary
                 .opacity(0.75)
-                .frame(width: contentWidth, height: 1)
+                .frame(width: contentSize.width, height: 1)
         }
         .padding(.horizontal)
     }

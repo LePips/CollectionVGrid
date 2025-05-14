@@ -1,79 +1,58 @@
 import CollectionVGrid
-import OrderedCollections
 import SwiftUI
-
-func colorWheel(radius: Int) -> Color {
-    Color(hue: Double(radius) / 360, saturation: 1, brightness: 1)
-}
-
-extension EdgeInsets {
-
-    init(_ constant: CGFloat) {
-        self.init(
-            top: constant,
-            leading: constant,
-            bottom: constant,
-            trailing: constant
-        )
-    }
-}
-
-enum GridType: Equatable {
-    case grid
-    case list
-
-    var layout: CollectionVGridLayout {
-        switch self {
-        case .grid:
-            .columns(6, insets: .init(50), itemSpacing: 50, lineSpacing: 50)
-        case .list:
-            .columns(1)
-        }
-    }
-}
 
 struct ContentView: View {
 
-    @State
-    var colors = OrderedSet(0 ..< 36)
-    @State
-    var layout: CollectionVGridLayout = .columns(6, insets: .init(50), itemSpacing: 50, lineSpacing: 50)
-    @State
-    var gridType: GridType = .grid
+    @StateObject
+    var proxy = CollectionVGridProxy()
 
     var body: some View {
+        TabView {
+            Tab("Home", systemImage: "house") {
+                _GridView()
+            }
+            
+            Tab("Settings", systemImage: "gearshape") {
+                _GridView()
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct _GridView: View {
+    
+    @State
+    var colors = (0 ..< 100).map { colorWheel(radius: $0) }
+    
+    let vGridLayout: CollectionVGridLayout = .columns(
+        6,
+        insets: .init(50),
+        itemSpacing: 50,
+        lineSpacing: 50
+    )
+    
+    var body: some View {
         CollectionVGrid(
-            $colors,
-            layout: $layout
+            uniqueElements: colors,
+            id: \.self,
+            layout: vGridLayout
         ) { color in
             Button {
-                switch gridType {
-                case .grid:
-                    gridType = .list
-                    layout = gridType.layout
-                case .list:
-                    gridType = .grid
-                    layout = gridType.layout
-                }
+                
             } label: {
-                switch gridType {
-                case .grid:
-                    colorWheel(radius: color)
-                        .aspectRatio(2 / 3, contentMode: .fill)
-                        .cornerRadius(5)
-                case .list:
-                    colorWheel(radius: color)
-                        .frame(height: 100)
-                        .cornerRadius(5)
-                }
+                GridItem(color: color, orientation: .landscape)
             }
             .buttonStyle(.card)
         }
         .onReachedBottomEdge(offset: .offset(100)) {
-            print("Reached bottom")
-        }
-        .onReachedTopEdge(offset: .offset(100)) {
-            print("Reached top")
+            Task {
+                try await Task.sleep(for: .seconds(1))
+                
+                await MainActor.run {
+                    colors.append(contentsOf: (0 ..< 100).map { colorWheel(radius: $0) })
+                }
+            }
         }
         .ignoresSafeArea()
     }

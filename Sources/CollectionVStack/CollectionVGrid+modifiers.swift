@@ -1,5 +1,3 @@
-import SwiftUI
-
 public extension CollectionVGrid {
 
     func onReachedBottomEdge(offset: CollectionVGridEdgeOffset = .offset(0), perform action: @escaping () -> Void) -> Self {

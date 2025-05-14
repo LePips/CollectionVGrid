@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: Collection
 
+#if !os(tvOS)
 public extension CollectionVList {
     
     init(
@@ -34,3 +35,4 @@ public extension CollectionVList where Element: Identifiable, ID == Element.ID {
         )
     }
 }
+#endif

@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if !os(tvOS)
 /// - Important: Currently experimental.
 public struct CollectionVList<Element, Data: Collection, ID: Hashable>: UIViewRepresentable where Data.Element == Element,
 Data.Index == Int {
@@ -48,3 +49,4 @@ Data.Index == Int {
         view.update(data: data)
     }
 }
+#endif

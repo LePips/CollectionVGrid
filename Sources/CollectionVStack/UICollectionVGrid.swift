@@ -8,11 +8,6 @@ import SwiftUI
 // TODO: infinite
 //       - like CollectionHStack carousel
 // TODO: full paging scrolling layout?
-// TODO: Fix TODO data bug below
-//       - if updated too quickly, then currentElementIDs count != data count and
-//         this will mainly lead to crashes with divide by 0/section count incorrect
-//       - this will probably want to be fixed because `reloadData` has to be used
-//         so this won't allow add/remove/move animations
 // TODO: reverse layout
 //       - bottom to top, like Photos app
 // TODO: prefetching
@@ -151,14 +146,9 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
         if !changes.isEmpty {
             data = newData
 
-            // TODO: Fix if necessary? See comment at top of file.
-
-//            collectionView.reload(using: changes) { _ in
-//                self.currentElementIDHashes = newHashes
-//            }
-
-            currentElementIDHashes = newIDs
-            collectionView.reloadData()
+            collectionView.reload(using: changes) { newHashes in
+                self.currentElementIDHashes = newHashes
+            }
         }
 
         // layout
@@ -224,8 +214,6 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
             withReuseIdentifier: HostingCollectionViewCell.reuseIdentifier,
             for: indexPath
         ) as! HostingCollectionViewCell
-
-        // TODO: Fix if necessary? See comment at top of file.
 
         let item = data[indexPath.row % currentElementIDHashes.count]
         let location = CollectionVGridLocation(column: indexPath.row % columns, row: indexPath.row / columns)
