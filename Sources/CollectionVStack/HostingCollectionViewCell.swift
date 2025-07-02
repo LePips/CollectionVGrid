@@ -1,19 +1,28 @@
 import SwiftUI
 
-class HostingCollectionViewCell: UICollectionViewCell {
+let cellReuseIdentifier = "HostingCollectionViewCell"
 
-    static let reuseIdentifier = "HostingCollectionViewCell"
+class HostingCollectionViewCell<Content: View>: UICollectionViewCell {
+
+    private var currentHostingController: UIHostingController<Content>?
 
     override func prepareForReuse() {
         super.prepareForReuse()
 
-        for subview in subviews {
-            subview.removeFromSuperview()
-        }
+        currentHostingController?.view.removeFromSuperview()
+        currentHostingController = nil
     }
 
-    func setupHostingView(with view: any View) {
-        let hostingController = UIHostingController(rootView: AnyView(view))
+    func setup(view: Content) {
+        let hostingController = UIHostingController(rootView: view)
+        setup(hostingController: hostingController)
+    }
+
+    func setup(hostingController: UIHostingController<Content>) {
+
+        self.currentHostingController?.view.removeFromSuperview()
+        self.currentHostingController = nil
+
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         hostingController.view.backgroundColor = nil
 
@@ -24,5 +33,7 @@ class HostingCollectionViewCell: UICollectionViewCell {
             hostingController.view.leadingAnchor.constraint(equalTo: leadingAnchor),
             hostingController.view.trailingAnchor.constraint(equalTo: trailingAnchor),
         ])
+
+        currentHostingController = hostingController
     }
 }

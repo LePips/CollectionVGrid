@@ -4,12 +4,12 @@ import SwiftUI
 
 #if !os(tvOS)
 public extension CollectionVList {
-    
+
     init(
         uniqueElements: Data,
         id: KeyPath<Element, ID>,
         @ViewBuilder header: @escaping () -> any View,
-        @ViewBuilder content: @escaping (Element) -> any View
+        @ViewBuilder content: @escaping (Element) -> Content
     ) {
         self.init(
             id: id,
@@ -25,7 +25,7 @@ public extension CollectionVList where Element: Identifiable, ID == Element.ID {
     init(
         uniqueElements: Data,
         @ViewBuilder header: @escaping () -> any View,
-        @ViewBuilder content: @escaping (Element) -> any View
+        @ViewBuilder content: @escaping (Element) -> Content
     ) {
         self.init(
             id: \.id,

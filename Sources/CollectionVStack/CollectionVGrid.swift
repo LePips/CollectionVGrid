@@ -1,10 +1,15 @@
 import DifferenceKit
 import SwiftUI
 
-public struct CollectionVGrid<Element, Data: Collection, ID: Hashable>: UIViewRepresentable where Data.Element == Element,
+public struct CollectionVGrid<
+    Element,
+    Data: Collection,
+    ID: Hashable,
+    Content: View
+>: UIViewRepresentable where Data.Element == Element,
 Data.Index == Int {
 
-    public typealias UIViewType = UICollectionVGrid<Element, Data, ID>
+    public typealias UIViewType = UICollectionVGrid<Element, Data, ID, Content>
 
     let _id: KeyPath<Element, ID>
     let data: Data
@@ -14,8 +19,7 @@ Data.Index == Int {
     var onReachedTopEdge: () -> Void
     var onReachedTopEdgeOffset: CollectionVGridEdgeOffset
     var proxy: CollectionVGridProxy?
-    var scrollIndicatorsVisible: Bool
-    let viewProvider: (Element, CollectionVGridLocation) -> any View
+    let viewProvider: (Element, CollectionVGridLocation) -> Content
 
     init(
         id: KeyPath<Element, ID>,
@@ -25,8 +29,7 @@ Data.Index == Int {
         onReachedBottomEdgeOffset: CollectionVGridEdgeOffset = .offset(0),
         onReachedTopEdge: @escaping () -> Void = {},
         onReachedTopEdgeOffset: CollectionVGridEdgeOffset = .offset(0),
-        scrollIndicatorsVisible: Bool = true,
-        @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> any View
+        @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
         self.data = data
@@ -35,7 +38,6 @@ Data.Index == Int {
         self.onReachedBottomEdgeOffset = onReachedBottomEdgeOffset
         self.onReachedTopEdge = onReachedTopEdge
         self.onReachedTopEdgeOffset = onReachedTopEdgeOffset
-        self.scrollIndicatorsVisible = scrollIndicatorsVisible
         self.viewProvider = viewProvider
     }
 
@@ -49,7 +51,6 @@ Data.Index == Int {
             onReachedTopEdge: onReachedTopEdge,
             onReachedTopEdgeOffset: onReachedTopEdgeOffset,
             proxy: proxy,
-            scrollIndicatorsVisible: scrollIndicatorsVisible,
             viewProvider: viewProvider
         )
     }
@@ -57,7 +58,9 @@ Data.Index == Int {
     public func updateUIView(_ view: UIViewType, context: Context) {
         view.update(
             data: data,
-            layout: layout
+            layout: layout,
+            isScrollEnabled: context.environment.isScrollEnabled,
+            verticalScrollIndicatorVisibility: context.environment.verticalScrollIndicatorVisibility
         )
     }
 }

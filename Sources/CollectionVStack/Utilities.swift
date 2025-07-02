@@ -46,6 +46,20 @@ extension UICollectionView {
     var flowLayout: UICollectionViewFlowLayout {
         collectionViewLayout as! UICollectionViewFlowLayout
     }
+
+    var verticalScrollIndicatorVisibility: ScrollIndicatorVisibility {
+        get {
+            showsVerticalScrollIndicator ? .visible : .hidden
+        }
+        set {
+            switch newValue {
+            case .automatic, .visible:
+                showsVerticalScrollIndicator = true
+            default:
+                showsVerticalScrollIndicator = false
+            }
+        }
+    }
 }
 
 // MARK: UIEdgeInsets
@@ -58,6 +72,24 @@ extension UIEdgeInsets {
 
     var vertical: CGFloat {
         top + bottom
+    }
+}
+
+// MARK: - UIView
+
+extension UIView {
+
+    func closestUIViewController() -> UIViewController? {
+        var responder: UIResponder? = self
+
+        while responder != nil {
+            if let vc = responder as? UIViewController {
+                return vc
+            }
+            responder = responder?.next
+        }
+
+        return nil
     }
 }
 

@@ -8,7 +8,7 @@ public extension CollectionVGrid {
         uniqueElements: Data,
         id: KeyPath<Element, ID>,
         layout: CollectionVGridLayout,
-        @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> any View
+        @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self.init(
             id: id,
@@ -22,7 +22,7 @@ public extension CollectionVGrid {
         uniqueElements: Data,
         id: KeyPath<Element, ID>,
         layout: CollectionVGridLayout,
-        @ViewBuilder viewProvider: @escaping (Element) -> any View
+        @ViewBuilder viewProvider: @escaping (Element) -> Content
     ) {
         self.init(
             id: id,
@@ -38,7 +38,7 @@ public extension CollectionVGrid where Element: Identifiable, ID == Element.ID {
     init(
         uniqueElements: Data,
         layout: CollectionVGridLayout,
-        @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> any View
+        @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self.init(
             id: \.id,
@@ -51,7 +51,7 @@ public extension CollectionVGrid where Element: Identifiable, ID == Element.ID {
     init(
         uniqueElements: Data,
         layout: CollectionVGridLayout,
-        @ViewBuilder viewProvider: @escaping (Element) -> any View
+        @ViewBuilder viewProvider: @escaping (Element) -> Content
     ) {
         self.init(
             id: \.id,
@@ -69,7 +69,7 @@ public extension CollectionVGrid where Data == [Element], Element == Int, ID == 
     init(
         count: Int,
         layout: CollectionVGridLayout,
-        @ViewBuilder viewProvider: @escaping (Element) -> any View
+        @ViewBuilder viewProvider: @escaping (Element) -> Content
     ) {
         self.init(
             id: \.self,

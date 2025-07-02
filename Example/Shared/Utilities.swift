@@ -17,7 +17,7 @@ func colorWheel(radius: Int) -> Color {
 extension EdgeInsets {
 
     static let zero = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
-    
+
     init(_ constant: CGFloat) {
         self.init(
             top: constant,
@@ -29,7 +29,7 @@ extension EdgeInsets {
 }
 
 extension View {
-    
+
     func trackingSize(_ binding: Binding<CGSize>) -> some View {
         onGeometryChange(for: CGSize.self) { proxy in
             proxy.size

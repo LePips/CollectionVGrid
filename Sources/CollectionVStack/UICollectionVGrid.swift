@@ -20,7 +20,12 @@ public protocol _UICollectionVGrid: UIView {
 
 // MARK: UICollectionVGrid
 
-public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
+public class UICollectionVGrid<
+    Element,
+    Data: Collection,
+    ID: Hashable,
+    Content: View
+>:
     UIView,
     _UICollectionVGrid,
     UICollectionViewDataSource,
@@ -41,8 +46,7 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
     private let onReachedTopEdge: () -> Void
     private let onReachedTopEdgeOffset: CollectionVGridEdgeOffset
     private var onReachedEdgeStore: Set<Edge>
-    private var scrollIndicatorsVisible: Bool
-    private let viewProvider: (Element, CollectionVGridLocation) -> any View
+    private let viewProvider: (Element, CollectionVGridLocation) -> Content
 
     // MARK: init
 
@@ -55,8 +59,7 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
         onReachedTopEdge: @escaping () -> Void,
         onReachedTopEdgeOffset: CollectionVGridEdgeOffset,
         proxy: CollectionVGridProxy?,
-        scrollIndicatorsVisible: Bool,
-        viewProvider: @escaping (Element, CollectionVGridLocation) -> any View
+        viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
         self.columns = 1
@@ -68,7 +71,6 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
         self.onReachedTopEdge = onReachedTopEdge
         self.onReachedTopEdgeOffset = onReachedTopEdgeOffset
         self.onReachedEdgeStore = []
-        self.scrollIndicatorsVisible = scrollIndicatorsVisible
         self.viewProvider = viewProvider
 
         super.init(frame: .zero)
@@ -92,12 +94,14 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
 
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.register(HostingCollectionViewCell.self, forCellWithReuseIdentifier: HostingCollectionViewCell.reuseIdentifier)
+        collectionView.register(
+            HostingCollectionViewCell<Content>.self,
+            forCellWithReuseIdentifier: cellReuseIdentifier
+        )
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.alwaysBounceVertical = true
         collectionView.backgroundColor = nil
-        collectionView.showsVerticalScrollIndicator = scrollIndicatorsVisible
 
         addSubview(collectionView)
 
@@ -117,19 +121,22 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
         super.layoutSubviews()
 
         itemSize = nil
-        update(data: data, layout: layout)
-
         collectionView.performBatchUpdates {
             collectionView.flowLayout.invalidateLayout()
+        }
+
+        if let viewController = closestUIViewController() {
+            viewController.setContentScrollView(collectionView)
         }
     }
 
     // MARK: update
 
-    // TODO: this seems to be called a lot when nothing changes
     func update(
         data newData: Data,
-        layout newLayout: CollectionVGridLayout
+        layout newLayout: CollectionVGridLayout,
+        isScrollEnabled: Bool,
+        verticalScrollIndicatorVisibility: ScrollIndicatorVisibility
     ) {
 
         // data
@@ -167,6 +174,9 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
 
             snapshotReload()
         }
+
+        collectionView.isScrollEnabled = isScrollEnabled
+        collectionView.verticalScrollIndicatorVisibility = verticalScrollIndicatorVisibility
     }
 
     public func snapshotReload() {
@@ -186,6 +196,7 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
         ])
 
         collectionView.alpha = 0
+        itemSize = nil
         collectionView.reloadData()
 
         UIView.animate(withDuration: 0.1) {
@@ -211,13 +222,13 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
     ) -> UICollectionViewCell {
 
         let cell = collectionView.dequeueReusableCell(
-            withReuseIdentifier: HostingCollectionViewCell.reuseIdentifier,
+            withReuseIdentifier: cellReuseIdentifier,
             for: indexPath
-        ) as! HostingCollectionViewCell
+        ) as! HostingCollectionViewCell<Content>
 
         let item = data[indexPath.row % currentElementIDHashes.count]
         let location = CollectionVGridLocation(column: indexPath.row % columns, row: indexPath.row / columns)
-        cell.setupHostingView(with: viewProvider(item, location))
+        cell.setup(view: viewProvider(item, location))
         return cell
     }
 
@@ -397,5 +408,17 @@ public class UICollectionVGrid<Element, Data: Collection, ID: Hashable>:
         }
 
         return itemWidth(columns: columns)
+    }
+}
+
+extension UIView {
+    func findViewController() -> UIViewController? {
+        if let nextResponder = self.next as? UIViewController {
+            nextResponder
+        } else if let nextResponder = self.next as? UIView {
+            nextResponder.findViewController()
+        } else {
+            nil
+        }
     }
 }

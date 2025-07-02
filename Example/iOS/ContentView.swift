@@ -12,11 +12,11 @@ struct ContentView: View {
 
     @StateObject
     var proxy = CollectionVGridProxy()
-    
+
     let colors = (0 ..< 360).map { colorWheel(radius: $0) }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             CollectionVGrid(
                 uniqueElements: colors,
                 id: \.self,
@@ -29,9 +29,9 @@ struct ContentView: View {
                     ListRow(color: color, orientation: orientation)
                 }
             }
-            .scrollIndicatorsVisible(false)
             .proxy(proxy)
-            .ignoresSafeArea(edges: .bottom)
+            .scrollIndicators(.hidden)
+            .ignoresSafeArea()
             .navigationTitle("CollectionVGrid")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

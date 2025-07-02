@@ -6,15 +6,16 @@ struct GridItem: View {
     let orientation: LayoutOrientation
 
     var body: some View {
-        switch orientation {
-        case .landscape:
-            color
-                .aspectRatio(1.77, contentMode: .fill)
-                .cornerRadius(5)
-        case .portrait:
-            color
-                .aspectRatio(0.66, contentMode: .fill)
-                .cornerRadius(5)
-        }
+        RoundedRectangle(cornerRadius: 5)
+            .fill(color)
+            .overlay(
+                Text(color.description)
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .padding(4),
+                alignment: .bottomTrailing
+            )
+            .aspectRatio(orientation == .landscape ? 1.77 : 0.66, contentMode: .fill)
+            .shadow(radius: 4, y: 2)
     }
 }
