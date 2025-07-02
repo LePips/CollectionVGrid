@@ -30,7 +30,8 @@ public class UICollectionVGrid<
     _UICollectionVGrid,
     UICollectionViewDataSource,
     UICollectionViewDelegate,
-    UICollectionViewDelegateFlowLayout
+    UICollectionViewDelegateFlowLayout,
+    UICollectionViewDataSourcePrefetching
     where Data.Element == Element, Data.Index == Int
 {
 
@@ -46,6 +47,8 @@ public class UICollectionVGrid<
     private let onReachedTopEdge: () -> Void
     private let onReachedTopEdgeOffset: CollectionVGridEdgeOffset
     private var onReachedEdgeStore: Set<Edge>
+    private let onPrefetchingElements: ([Element]) -> Void
+    private let onCancelPrefetchingElements: ([Element]) -> Void
     private let viewProvider: (Element, CollectionVGridLocation) -> Content
 
     // MARK: init
@@ -58,6 +61,8 @@ public class UICollectionVGrid<
         onReachedBottomEdgeOffset: CollectionVGridEdgeOffset,
         onReachedTopEdge: @escaping () -> Void,
         onReachedTopEdgeOffset: CollectionVGridEdgeOffset,
+        onPrefetchingElements: @escaping ([Element]) -> Void,
+        onCancelPrefetchingElements: @escaping ([Element]) -> Void,
         proxy: CollectionVGridProxy?,
         viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
@@ -70,6 +75,8 @@ public class UICollectionVGrid<
         self.onReachedBottomEdgeOffset = onReachedBottomEdgeOffset
         self.onReachedTopEdge = onReachedTopEdge
         self.onReachedTopEdgeOffset = onReachedTopEdgeOffset
+        self.onPrefetchingElements = onPrefetchingElements
+        self.onCancelPrefetchingElements = onCancelPrefetchingElements
         self.onReachedEdgeStore = []
         self.viewProvider = viewProvider
 
@@ -99,6 +106,7 @@ public class UICollectionVGrid<
             forCellWithReuseIdentifier: cellReuseIdentifier
         )
         collectionView.dataSource = self
+        collectionView.prefetchDataSource = self
         collectionView.delegate = self
         collectionView.alwaysBounceVertical = true
         collectionView.backgroundColor = nil
@@ -409,16 +417,16 @@ public class UICollectionVGrid<
 
         return itemWidth(columns: columns)
     }
-}
 
-extension UIView {
-    func findViewController() -> UIViewController? {
-        if let nextResponder = self.next as? UIViewController {
-            nextResponder
-        } else if let nextResponder = self.next as? UIView {
-            nextResponder.findViewController()
-        } else {
-            nil
-        }
+    // MARK: UICollectionViewDataSourcePrefetching
+
+    public func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
+        let prefetchingElements = indexPaths.map { data[$0.row % data.count] }
+        onPrefetchingElements(prefetchingElements)
+    }
+
+    public func collectionView(_ collectionView: UICollectionView, cancelPrefetchingForItemsAt indexPaths: [IndexPath]) {
+        let cancellingElements = indexPaths.map { data[$0.row % data.count] }
+        onCancelPrefetchingElements(cancellingElements)
     }
 }

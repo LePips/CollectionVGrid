@@ -16,6 +16,14 @@ public extension CollectionVGrid {
             .copy(modifying: \.onReachedTopEdgeOffset, to: offset)
     }
 
+    func onPrefetchingElements(_ action: @escaping ([Element]) -> Void) -> Self {
+        copy(modifying: \.onPrefetchingElements, to: action)
+    }
+
+    func onCancelPrefetchingElements(_ action: @escaping ([Element]) -> Void) -> Self {
+        copy(modifying: \.onCancelPrefetchingElements, to: action)
+    }
+
     func proxy(_ proxy: CollectionVGridProxy) -> Self {
         copy(modifying: \.proxy, to: proxy)
     }
