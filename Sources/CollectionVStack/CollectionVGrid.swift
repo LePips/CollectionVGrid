@@ -5,11 +5,12 @@ public struct CollectionVGrid<
     Element,
     Data: Collection,
     ID: Hashable,
-    Content: View
+    Content: View,
+    Header: View
 >: UIViewRepresentable where Data.Element == Element,
 Data.Index == Int {
 
-    public typealias UIViewType = UICollectionVGrid<Element, Data, ID, Content>
+    public typealias UIViewType = UICollectionVGrid<Element, Data, ID, Content, Header>
 
     let _id: KeyPath<Element, ID>
     let data: Data
@@ -21,9 +22,10 @@ Data.Index == Int {
     var onPrefetchingElements: ([Element]) -> Void
     var onCancelPrefetchingElements: ([Element]) -> Void
     var proxy: CollectionVGridProxy?
+    var headerProvider: (() -> Header)?
     let viewProvider: (Element, CollectionVGridLocation) -> Content
 
-    init(
+    public init(
         id: KeyPath<Element, ID>,
         data: Data,
         layout: CollectionVGridLayout,
@@ -33,6 +35,7 @@ Data.Index == Int {
         onReachedTopEdgeOffset: CollectionVGridEdgeOffset = .offset(0),
         onPrefetchingElements: @escaping ([Element]) -> Void = { _ in },
         onCancelPrefetchingElements: @escaping ([Element]) -> Void = { _ in },
+        headerProvider: (() -> Header)? = nil,
         @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
@@ -44,6 +47,7 @@ Data.Index == Int {
         self.onReachedTopEdgeOffset = onReachedTopEdgeOffset
         self.onPrefetchingElements = onPrefetchingElements
         self.onCancelPrefetchingElements = onCancelPrefetchingElements
+        self.headerProvider = headerProvider
         self.viewProvider = viewProvider
     }
 
@@ -59,6 +63,7 @@ Data.Index == Int {
             onPrefetchingElements: onPrefetchingElements,
             onCancelPrefetchingElements: onCancelPrefetchingElements,
             proxy: proxy,
+            headerProvider: headerProvider,
             viewProvider: viewProvider
         )
     }

@@ -24,7 +24,8 @@ public class UICollectionVGrid<
     Element,
     Data: Collection,
     ID: Hashable,
-    Content: View
+    Content: View,
+    Header: View
 >:
     UIView,
     _UICollectionVGrid,
@@ -50,6 +51,11 @@ public class UICollectionVGrid<
     private let onPrefetchingElements: ([Element]) -> Void
     private let onCancelPrefetchingElements: ([Element]) -> Void
     private let viewProvider: (Element, CollectionVGridLocation) -> Content
+    private let headerProvider: (() -> Header)?
+    private var headerSize: CGSize?
+
+    private let headerReuseIdentifier = "HostingCollectionViewHeader"
+
 
     // MARK: init
 
@@ -64,6 +70,7 @@ public class UICollectionVGrid<
         onPrefetchingElements: @escaping ([Element]) -> Void,
         onCancelPrefetchingElements: @escaping ([Element]) -> Void,
         proxy: CollectionVGridProxy?,
+        headerProvider: (() -> Header)?,
         viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
@@ -78,6 +85,7 @@ public class UICollectionVGrid<
         self.onPrefetchingElements = onPrefetchingElements
         self.onCancelPrefetchingElements = onCancelPrefetchingElements
         self.onReachedEdgeStore = []
+        self.headerProvider = headerProvider
         self.viewProvider = viewProvider
 
         super.init(frame: .zero)
@@ -105,6 +113,11 @@ public class UICollectionVGrid<
             HostingCollectionViewCell<Content>.self,
             forCellWithReuseIdentifier: cellReuseIdentifier
         )
+        collectionView.register(
+            HostingCollectionViewCell<Header>.self,
+            forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
+            withReuseIdentifier: headerReuseIdentifier
+        )
         collectionView.dataSource = self
         collectionView.prefetchDataSource = self
         collectionView.delegate = self
@@ -129,6 +142,8 @@ public class UICollectionVGrid<
         super.layoutSubviews()
 
         itemSize = nil
+        headerSize = nil
+
         collectionView.performBatchUpdates {
             collectionView.flowLayout.invalidateLayout()
         }
@@ -172,6 +187,7 @@ public class UICollectionVGrid<
             layout = newLayout
 
             itemSize = nil
+            headerSize = nil
 
             collectionView.flowLayout.sectionInset = newLayout.insets.asUIEdgeInsets
             collectionView.flowLayout.minimumLineSpacing = newLayout.lineSpacing
@@ -205,6 +221,7 @@ public class UICollectionVGrid<
 
         collectionView.alpha = 0
         itemSize = nil
+        headerSize = nil
         collectionView.reloadData()
 
         UIView.animate(withDuration: 0.1) {
@@ -238,6 +255,27 @@ public class UICollectionVGrid<
         let location = CollectionVGridLocation(column: indexPath.row % columns, row: indexPath.row / columns)
         cell.setup(view: viewProvider(item, location))
         return cell
+    }
+
+    public func collectionView(
+        _ collectionView: UICollectionView,
+        viewForSupplementaryElementOfKind kind: String,
+        at indexPath: IndexPath
+    ) -> UICollectionReusableView {
+        guard kind == UICollectionView.elementKindSectionHeader,
+              let headerProvider = headerProvider else {
+            return UICollectionReusableView()
+        }
+
+        let header = collectionView.dequeueReusableSupplementaryView(
+            ofKind: kind,
+            withReuseIdentifier: headerReuseIdentifier,
+            for: indexPath
+        ) as! HostingCollectionViewCell<Header>
+
+        header.setup(view: headerProvider())
+
+        return header
     }
 
     // MARK: UICollectionViewDelegate
@@ -280,6 +318,33 @@ public class UICollectionVGrid<
 
             itemSize = singleItemSize(width: width)
             return itemSize
+        }
+    }
+
+    public func collectionView(
+        _ collectionView: UICollectionView,
+        layout collectionViewLayout: UICollectionViewLayout,
+        referenceSizeForHeaderInSection section: Int
+    ) -> CGSize {
+        guard headerProvider != nil else {
+            return .zero
+        }
+
+        if let headerSize {
+            return headerSize
+        } else {
+            let width = collectionView.bounds.width
+            let view = headerProvider!()
+            let hostingController = UIHostingController(rootView: view.frame(width: width))
+            hostingController.view.sizeToFit()
+
+            let size = CGSize(
+                width: width,
+                height: hostingController.view.bounds.height
+            )
+
+            headerSize = size
+            return size
         }
     }
 

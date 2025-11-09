@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: Collection
 
-public extension CollectionVGrid {
+public extension CollectionVGrid where Header == EmptyView {
 
     init(
         uniqueElements: Data,
@@ -33,7 +33,7 @@ public extension CollectionVGrid {
     }
 }
 
-public extension CollectionVGrid where Element: Identifiable, ID == Element.ID {
+public extension CollectionVGrid where Element: Identifiable, ID == Element.ID, Header == EmptyView {
 
     init(
         uniqueElements: Data,
@@ -64,7 +64,7 @@ public extension CollectionVGrid where Element: Identifiable, ID == Element.ID {
 
 // MARK: Count
 
-public extension CollectionVGrid where Data == [Element], Element == Int, ID == Int {
+public extension CollectionVGrid where Data == [Element], Element == Int, ID == Int, Header == EmptyView {
 
     init(
         count: Int,
