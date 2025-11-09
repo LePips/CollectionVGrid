@@ -1,3 +1,5 @@
+import SwiftUI
+
 public extension CollectionVGrid {
 
     func onReachedBottomEdge(
@@ -22,6 +24,22 @@ public extension CollectionVGrid {
 
     func onCancelPrefetchingElements(_ action: @escaping ([Element]) -> Void) -> Self {
         copy(modifying: \.onCancelPrefetchingElements, to: action)
+    }
+
+    func header<NewHeader: View>(@ViewBuilder _ headerProvider: @escaping () -> NewHeader) -> CollectionVGrid<Element, Data, ID, Content, NewHeader> {
+        CollectionVGrid<Element, Data, ID, Content, NewHeader>(
+            id: _id,
+            data: data,
+            layout: layout,
+            onReachedBottomEdge: onReachedBottomEdge,
+            onReachedBottomEdgeOffset: onReachedBottomEdgeOffset,
+            onReachedTopEdge: onReachedTopEdge,
+            onReachedTopEdgeOffset: onReachedTopEdgeOffset,
+            onPrefetchingElements: onPrefetchingElements,
+            onCancelPrefetchingElements: onCancelPrefetchingElements,
+            headerProvider: headerProvider,
+            viewProvider: viewProvider
+        )
     }
 
     func proxy(_ proxy: CollectionVGridProxy) -> Self {
