@@ -18,8 +18,6 @@ Data.Index == Int {
     var onReachedBottomEdgeOffset: CollectionVGridEdgeOffset
     var onReachedTopEdge: () -> Void
     var onReachedTopEdgeOffset: CollectionVGridEdgeOffset
-    var onPrefetchingElements: ([Element]) -> Void
-    var onCancelPrefetchingElements: ([Element]) -> Void
     var proxy: CollectionVGridProxy?
     let viewProvider: (Element, CollectionVGridLocation) -> Content
 
@@ -31,8 +29,6 @@ Data.Index == Int {
         onReachedBottomEdgeOffset: CollectionVGridEdgeOffset = .offset(0),
         onReachedTopEdge: @escaping () -> Void = {},
         onReachedTopEdgeOffset: CollectionVGridEdgeOffset = .offset(0),
-        onPrefetchingElements: @escaping ([Element]) -> Void = { _ in },
-        onCancelPrefetchingElements: @escaping ([Element]) -> Void = { _ in },
         @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
@@ -42,8 +38,6 @@ Data.Index == Int {
         self.onReachedBottomEdgeOffset = onReachedBottomEdgeOffset
         self.onReachedTopEdge = onReachedTopEdge
         self.onReachedTopEdgeOffset = onReachedTopEdgeOffset
-        self.onPrefetchingElements = onPrefetchingElements
-        self.onCancelPrefetchingElements = onCancelPrefetchingElements
         self.viewProvider = viewProvider
     }
 
@@ -56,8 +50,6 @@ Data.Index == Int {
             onReachedBottomEdgeOffset: onReachedBottomEdgeOffset,
             onReachedTopEdge: onReachedTopEdge,
             onReachedTopEdgeOffset: onReachedTopEdgeOffset,
-            onPrefetchingElements: onPrefetchingElements,
-            onCancelPrefetchingElements: onCancelPrefetchingElements,
             proxy: proxy,
             viewProvider: viewProvider
         )
