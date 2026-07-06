@@ -16,6 +16,7 @@ import SwiftUI
 public protocol _UICollectionVGrid: UIView {
 
     func snapshotReload()
+    func scrollToTop(animated: Bool)
 }
 
 // MARK: UICollectionVGrid
@@ -207,6 +208,16 @@ public class UICollectionVGrid<
         }
     }
 
+    public func scrollToTop(animated: Bool) {
+        collectionView.setContentOffset(
+            .init(
+                x: 0,
+                y: -collectionView.adjustedContentInset.top
+            ),
+            animated: animated
+        )
+    }
+
     // MARK: UICollectionViewDataSource
 
     public func collectionView(
@@ -234,7 +245,7 @@ public class UICollectionVGrid<
 
     // MARK: UICollectionViewDelegate
 
-    // required for tvOS
+    /// required for tvOS
     public func collectionView(
         _ collectionView: UICollectionView,
         canFocusItemAt indexPath: IndexPath

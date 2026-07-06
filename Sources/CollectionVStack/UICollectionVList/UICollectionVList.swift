@@ -56,12 +56,10 @@ public class UICollectionVList<
             var config = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
             config.showsSeparators = false
 
-            let section = NSCollectionLayoutSection.list(
+            return NSCollectionLayoutSection.list(
                 using: config,
                 layoutEnvironment: environment
             )
-
-            return section
         }
 
         func makeContentSection(environment: any NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
@@ -88,12 +86,10 @@ public class UICollectionVList<
                 }
             }
 
-            let section = NSCollectionLayoutSection.list(
+            return NSCollectionLayoutSection.list(
                 using: config,
                 layoutEnvironment: environment
             )
-
-            return section
         }
 
         return UICollectionViewCompositionalLayout { sectionIndex, environment -> NSCollectionLayoutSection? in

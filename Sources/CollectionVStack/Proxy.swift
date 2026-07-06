@@ -14,4 +14,8 @@ public class CollectionVGridProxy: ObservableObject {
     public func layout() {
         collectionVGrid?.snapshotReload()
     }
+
+    public func scrollToTop(animated: Bool = true) {
+        collectionVGrid?.scrollToTop(animated: animated)
+    }
 }
