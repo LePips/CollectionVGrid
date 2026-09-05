@@ -8,10 +8,12 @@ public class CollectionVGridProxy: ObservableObject {
         self.collectionVGrid = nil
     }
 
-    /// Forces the `CollectionVGrid` to re-layout its views.
-    /// This is useful if the layout is the same, but the views
-    /// have changed and require re-drawing.
-    public func layout() {
+    /// Remeasures item content and redraws the collection's items.
+    ///
+    /// Call this after changing content that affects item size. The collection derives
+    /// its resize proportions from the new measurement; no sizing values are required.
+    public func redraw() {
+        objectWillChange.send()
         collectionVGrid?.snapshotReload()
     }
 

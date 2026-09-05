@@ -40,14 +40,18 @@ public class UICollectionVGrid<
     private var columns: Int
     private var currentElementIDHashes: [Int]
     private var data: Data
-    private var itemSize: CGSize!
+    private var measuredItemAspectRatio: CGFloat?
+    private var itemSize: CGSize?
+    private var lastLaidOutWidth: CGFloat?
     private var layout: CollectionVGridLayout
+    private var layoutInvalidationGeneration = 0
+    private var needsSizingUpdate = true
     private let onReachedBottomEdge: () -> Void
     private let onReachedBottomEdgeOffset: CollectionVGridEdgeOffset
     private let onReachedTopEdge: () -> Void
     private let onReachedTopEdgeOffset: CollectionVGridEdgeOffset
     private var onReachedEdgeStore: Set<Edge>
-    private let viewProvider: (Element, CollectionVGridLocation) -> Content
+    private var viewProvider: (Element, CollectionVGridLocation) -> Content
 
     // MARK: init
 
@@ -65,8 +69,8 @@ public class UICollectionVGrid<
         self._id = id
         self.columns = 1
         self.currentElementIDHashes = []
-        self.layout = layout
         self.data = data
+        self.layout = layout
         self.onReachedBottomEdge = onReachedBottomEdge
         self.onReachedBottomEdgeOffset = onReachedBottomEdgeOffset
         self.onReachedTopEdge = onReachedTopEdge
@@ -121,10 +125,7 @@ public class UICollectionVGrid<
     override public func layoutSubviews() {
         super.layoutSubviews()
 
-        itemSize = nil
-        collectionView.performBatchUpdates {
-            collectionView.flowLayout.invalidateLayout()
-        }
+        updateItemSize(forWidth: bounds.width)
 
         if let viewController = closestUIViewController() {
             viewController.setContentScrollView(collectionView)
@@ -133,12 +134,27 @@ public class UICollectionVGrid<
 
     // MARK: update
 
+    override public func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
+            invalidateSizing()
+        }
+    }
+
     func update(
         data newData: Data,
         layout newLayout: CollectionVGridLayout,
         isScrollEnabled: Bool,
-        verticalScrollIndicatorVisibility: ScrollIndicatorVisibility
+        verticalScrollIndicatorVisibility: ScrollIndicatorVisibility,
+        viewProvider: ((Element, CollectionVGridLocation) -> Content)? = nil
     ) {
+
+        let wasEmpty = data.isEmpty
+        let layoutChanged = newLayout != layout
+
+        if let viewProvider {
+            self.viewProvider = viewProvider
+        }
 
         // data
 
@@ -151,9 +167,10 @@ public class UICollectionVGrid<
             section: 0
         )
 
-        if !changes.isEmpty {
-            data = newData
+        let hasDataChanges = !changes.isEmpty
+        data = newData
 
+        if hasDataChanges {
             collectionView.reload(using: changes) { newHashes in
                 self.currentElementIDHashes = newHashes
             }
@@ -161,10 +178,8 @@ public class UICollectionVGrid<
 
         // layout
 
-        if newLayout != layout {
+        if layoutChanged {
             layout = newLayout
-
-            itemSize = nil
 
             collectionView.flowLayout.sectionInset = newLayout.insets.asUIEdgeInsets
             collectionView.flowLayout.minimumLineSpacing = newLayout.lineSpacing
@@ -174,6 +189,8 @@ public class UICollectionVGrid<
             // TODO: - figure out cell size animation if desired
 
             snapshotReload()
+        } else if hasDataChanges || wasEmpty != newData.isEmpty {
+            invalidateSizing()
         }
 
         collectionView.isScrollEnabled = isScrollEnabled
@@ -181,6 +198,8 @@ public class UICollectionVGrid<
     }
 
     public func snapshotReload() {
+
+        invalidateSizing()
 
         guard let snapshot = collectionView.snapshotView(afterScreenUpdates: false) else {
             collectionView.reloadData()
@@ -197,7 +216,6 @@ public class UICollectionVGrid<
         ])
 
         collectionView.alpha = 0
-        itemSize = nil
         collectionView.reloadData()
 
         UIView.animate(withDuration: 0.1) {
@@ -261,29 +279,11 @@ public class UICollectionVGrid<
         sizeForItemAt indexPath: IndexPath
     ) -> CGSize {
 
-        if let itemSize {
-            return itemSize
-        } else {
-            let width: CGFloat
-
-            // sometimes item width will be too large and overflow row, causing undesirable
-            // layout, probably due to floating point errors. Just floor and can live with
-            // the extra item spacing.
-
-            switch layout.layoutType {
-            case .columns:
-                let itemWidth = itemWidth(columns: layout.layoutValue)
-                width = floor(itemWidth.width)
-                columns = itemWidth.columns
-            case .minWidth:
-                let itemWidth = itemWidth(minWidth: layout.layoutValue)
-                width = floor(itemWidth.width)
-                columns = itemWidth.columns
-            }
-
-            itemSize = singleItemSize(width: width)
-            return itemSize
+        if itemSize == nil {
+            updateItemSize(forWidth: bounds.width)
         }
+
+        return itemSize ?? .zero
     }
 
     // MARK: UIScrollViewDelegate
@@ -314,7 +314,7 @@ public class UICollectionVGrid<
                 .map(\.row)
                 .min() ?? Int.max
 
-            reachedTop = minIndexPath <= rows * columns - 1
+            reachedTop = minIndexPath < itemCount(inRows: rows)
         }
 
         if reachedTop {
@@ -341,8 +341,12 @@ public class UICollectionVGrid<
                 .indexPathsForVisibleItems
                 .map(\.row)
                 .max() ?? Int.min
+            let itemCount = itemCount(inRows: rows)
+            let firstBottomRowIndex = itemCount >= currentElementIDHashes.count
+                ? 0
+                : currentElementIDHashes.count - itemCount
 
-            reachedBottom = maxIndexPath >= currentElementIDHashes.count - columns * rows
+            reachedBottom = maxIndexPath >= firstBottomRowIndex
         }
 
         if reachedBottom {
@@ -357,67 +361,159 @@ public class UICollectionVGrid<
 
     // MARK: item size
 
-    private func singleItemSize(width: CGFloat) -> CGSize {
+    /// Computes a stable item size from the supplied width rather than reading `bounds`
+    /// throughout the calculation. This keeps every step of a live resize on one width.
+    func computeItemSize(forWidth availableWidth: CGFloat) -> (columns: Int, itemSize: CGSize) {
+        guard availableWidth.isFinite, availableWidth > 0 else { return (1, .zero) }
 
-        guard !data.isEmpty else { return .init(width: width, height: 0) }
-
-        let view: AnyView = if width > 0 {
-            AnyView(viewProvider(data[0], .init(column: -1, row: -1)).frame(width: width))
-        } else {
-            AnyView(viewProvider(data[0], .init(column: -1, row: -1)))
+        let resolvedWidth: (width: CGFloat, columns: Int) = switch layout.layoutType {
+        case .columns:
+            itemWidth(
+                availableWidth: availableWidth,
+                columns: validColumnCount(layout.layoutValue)
+            )
+        case .minWidth:
+            itemWidth(
+                availableWidth: availableWidth,
+                minimumWidth: validMinimumWidth(layout.layoutValue)
+            )
         }
 
-        let singleItem = UIHostingController(rootView: view)
-        singleItem.view.sizeToFit()
-        // sizeToFit will sometimes round up, need to account for in CollectionHStack?
-        let changeRatio = width / singleItem.view.bounds.size.width
-        return singleItem.view.bounds.size * changeRatio
+        return (resolvedWidth.columns, measuredItemSize(width: resolvedWidth.width))
+    }
+
+    private func updateItemSize(forWidth width: CGFloat) {
+        guard width.isFinite, width > 0 else { return }
+        guard needsSizingUpdate || lastLaidOutWidth != width else { return }
+
+        let resolvedSize = computeItemSize(forWidth: width)
+        let newItemSize = resolvedSize.itemSize
+        let itemSizeChanged = itemSize != newItemSize
+
+        columns = resolvedSize.columns
+        itemSize = newItemSize
+        lastLaidOutWidth = width
+        needsSizingUpdate = false
+
+        guard itemSizeChanged else { return }
+
+        // Keep UICollectionViewFlowLayout's cached metrics in sync immediately.
+        // During iPad window transitions, invalidating delegate metrics alone can
+        // leave its itemSize and existing attributes at the pre-transition width.
+        collectionView.flowLayout.itemSize = newItemSize
+        invalidateCollectionLayout()
+    }
+
+    private func invalidateCollectionLayout() {
+        collectionView.collectionViewLayout.invalidateLayout()
+
+        // `super.layoutSubviews()` has already laid out the collection view for this
+        // pass. Rebuild its attributes now so the old item width is not displayed for
+        // an extra frame during a window or split-view transition.
+        collectionView.layoutIfNeeded()
+
+        // UIKit can reject the forced child layout while a scene-geometry transaction
+        // is active. Coalesce one reconciliation pass onto the next run-loop turn.
+        layoutInvalidationGeneration += 1
+        let generation = layoutInvalidationGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.layoutInvalidationGeneration == generation else { return }
+
+            self.collectionView.collectionViewLayout.invalidateLayout()
+            self.collectionView.layoutIfNeeded()
+        }
+    }
+
+    private func invalidateSizing() {
+        needsSizingUpdate = true
+        lastLaidOutWidth = nil
+        itemSize = nil
+        measuredItemAspectRatio = nil
+        setNeedsLayout()
+    }
+
+    private func measuredItemSize(width: CGFloat) -> CGSize {
+        guard !data.isEmpty, width.isFinite, width > 0 else {
+            return CGSize(width: nonnegativeFinite(width), height: 0)
+        }
+
+        if let measuredItemAspectRatio {
+            return CGSize(
+                width: width,
+                height: nonnegativeFinite(width / measuredItemAspectRatio)
+            )
+        }
+
+        let view = AnyView(
+            viewProvider(data[0], .init(column: -1, row: -1))
+                .frame(width: width)
+        )
+
+        // Remeasure after invalidation, then reuse the measured ratio while resizing.
+        let hostingController = UIHostingController(rootView: view)
+        hostingController.view.backgroundColor = nil
+        hostingController.view.sizeToFit()
+        let measuredSize = hostingController.view.bounds.size
+
+        // Hosting views can round their bounds. Derive the ratio from the measured
+        // width and height together, then apply it to the requested item width.
+        let ratio = measuredSize.width / measuredSize.height
+        if ratio.isFinite, ratio > 0 {
+            measuredItemAspectRatio = ratio
+            return CGSize(width: width, height: nonnegativeFinite(width / ratio))
+        }
+        return CGSize(width: width, height: nonnegativeFinite(measuredSize.height))
+    }
+
+    private func validColumnCount(_ columns: CGFloat) -> Int {
+        guard columns.isFinite, columns > 0 else { return 1 }
+        return Int(min(floor(columns), CGFloat(Int.max).nextDown))
+    }
+
+    private func validMinimumWidth(_ minimumWidth: CGFloat) -> CGFloat {
+        guard minimumWidth.isFinite, minimumWidth > 0 else { return 1 }
+        return minimumWidth
+    }
+
+    private func nonnegativeFinite(_ value: CGFloat) -> CGFloat {
+        guard value.isFinite else { return 0 }
+        return max(value, 0)
+    }
+
+    private func itemCount(inRows rows: Int) -> Int {
+        guard rows > 0 else { return 0 }
+        let (itemCount, overflow) = rows.multipliedReportingOverflow(by: columns)
+        return overflow ? Int.max : itemCount
     }
 
     // MARK: item width
 
-    /// Precondition: columns > 0
-    private func itemWidth(columns: CGFloat, trailingInset: CGFloat = 0) -> (width: CGFloat, columns: Int) {
-
-        precondition(columns > 0, "Given `columns` is less than or equal to 0")
-
-        let itemSpaces: CGFloat
-        let sectionInsets: CGFloat
-
-        if floor(columns) == columns {
-            itemSpaces = columns - 1
-            sectionInsets = collectionView.flowLayout.sectionInset.horizontal
-        } else {
-            itemSpaces = floor(columns)
-            sectionInsets = collectionView.flowLayout.sectionInset.left
-        }
-
+    private func itemWidth(
+        availableWidth: CGFloat,
+        columns: Int
+    ) -> (width: CGFloat, columns: Int) {
+        let itemSpaces = CGFloat(max(columns - 1, 0))
         let itemSpacing = itemSpaces * collectionView.flowLayout.minimumInteritemSpacing
-        let totalNegative = sectionInsets + itemSpacing + trailingInset
+        let totalNegative = collectionView.flowLayout.sectionInset.horizontal + itemSpacing
+        let width = (availableWidth - totalNegative) / CGFloat(columns)
 
-        return ((collectionView.frame.width - totalNegative) / columns, Int(columns))
+        return (nonnegativeFinite(width), columns)
     }
 
-    /// Precondition: minWidth > 0
-    private func itemWidth(minWidth: CGFloat) -> (width: CGFloat, columns: Int) {
-
-        precondition(minWidth > 0, "Given `minWidth` is less than or equal to 0")
-
-        // Ensure that each item has a given minimum width
+    private func itemWidth(
+        availableWidth: CGFloat,
+        minimumWidth: CGFloat
+    ) -> (width: CGFloat, columns: Int) {
         let layout = collectionView.flowLayout
-        var columns = CGFloat(Int((collectionView.frame.width - layout.sectionInset.horizontal) / minWidth))
-
-        guard columns != 1 else { return itemWidth(columns: 1) }
-
-        let preItemSpacing = (columns - 1) * layout.minimumInteritemSpacing
-
-        let totalNegative = layout.sectionInset.horizontal + preItemSpacing
-
-        // if adding negative space with current column count would result in column sizes < minWidth
-        if columns * minWidth + totalNegative > bounds.width {
-            columns -= 1
+        let contentWidth = max(availableWidth - layout.sectionInset.horizontal, 0)
+        let widthAndSpacing = minimumWidth + layout.minimumInteritemSpacing
+        let rawColumns: CGFloat = if widthAndSpacing > 0 {
+            max(floor((contentWidth + layout.minimumInteritemSpacing) / widthAndSpacing), 1)
+        } else {
+            1
         }
+        let columns = Int(min(rawColumns, CGFloat(Int.max).nextDown))
 
-        return itemWidth(columns: columns)
+        return itemWidth(availableWidth: availableWidth, columns: columns)
     }
 }

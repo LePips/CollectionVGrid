@@ -48,7 +48,7 @@ struct ContentView: View {
             case (.portrait, .grid):
                 vGridLayout = .columns(4)
             case (_, .list):
-                proxy.layout()
+                proxy.redraw()
                 vGridLayout = .columns(1, insets: .zero, itemSpacing: 0, lineSpacing: 0)
             }
         }

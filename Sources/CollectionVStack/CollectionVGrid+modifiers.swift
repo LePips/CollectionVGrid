@@ -1,3 +1,5 @@
+import SwiftUI
+
 public extension CollectionVGrid {
 
     func onReachedBottomEdge(

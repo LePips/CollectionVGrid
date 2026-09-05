@@ -60,7 +60,8 @@ Data.Index == Int {
             data: data,
             layout: layout,
             isScrollEnabled: context.environment.isScrollEnabled,
-            verticalScrollIndicatorVisibility: context.environment.verticalScrollIndicatorVisibility
+            verticalScrollIndicatorVisibility: context.environment.verticalScrollIndicatorVisibility,
+            viewProvider: viewProvider
         )
     }
 }
