@@ -1,16 +1,14 @@
 import SwiftUI
 
-#if !os(tvOS)
-/// - Important: Currently experimental.
+#if os(iOS)
+/// An experimental iOS-only collection list.
 public struct CollectionVList<
     Element,
     Data: Collection,
     ID: Hashable,
     Content: View
->: UIViewRepresentable where Data.Element == Element,
+> where Data.Element == Element,
 Data.Index == Int {
-
-    public typealias UIViewType = UICollectionVList<Element, Data, ID, Content>
 
     let _id: KeyPath<Element, ID>
     let data: Data
@@ -34,6 +32,10 @@ Data.Index == Int {
         self.headerProvider = headerProvider
         self.viewProvider = viewProvider
     }
+}
+
+extension CollectionVList: UIViewRepresentable {
+    public typealias UIViewType = UICollectionVList<Element, Data, ID, Content>
 
     public func makeUIView(context: Context) -> UIViewType {
         UICollectionVList(

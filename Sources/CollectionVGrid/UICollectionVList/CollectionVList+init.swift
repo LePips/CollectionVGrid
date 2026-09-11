@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: Collection
 
-#if !os(tvOS)
+#if os(iOS)
 public extension CollectionVList {
 
     init(

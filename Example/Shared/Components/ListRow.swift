@@ -24,9 +24,9 @@ struct ListRow: View {
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
 
-                        Text(String(repeating: "A", count: Int.random(in: 4 ..< 12)))
+                        Text("Sample collection item")
                             .font(.caption)
-                            .foregroundColor(Color(UIColor.lightGray))
+                            .foregroundStyle(.secondary)
                             .redacted(reason: .placeholder)
                     }
 

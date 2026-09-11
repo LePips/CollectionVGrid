@@ -7,9 +7,13 @@ import Testing
 @MainActor
 struct CollectionVGridHostedResizeTests {
     private func findCollection(in view: UIView) -> UICollectionView? {
-        if let view = view as? UICollectionView { return view }
+        if let view = view as? UICollectionView {
+            return view
+        }
         for subview in view.subviews {
-            if let collection = findCollection(in: subview) { return collection }
+            if let collection = findCollection(in: subview) {
+                return collection
+            }
         }
         return nil
     }

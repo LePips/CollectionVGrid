@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 @testable import CollectionVGrid
 import SwiftUI
 import Testing
@@ -362,3 +363,5 @@ private struct MutableAspectRatioItem: View {
         Color.blue.aspectRatio(aspectRatio, contentMode: .fill)
     }
 }
+
+#endif

@@ -1,7 +1,7 @@
+#if os(iOS)
 import DifferenceKit
 import SwiftUI
 
-#if !os(tvOS)
 public class UICollectionVList<
     Element,
     Data: Collection,
@@ -17,7 +17,7 @@ public class UICollectionVList<
 
     private var _id: KeyPath<Element, ID>
 
-    private var currentElementIDHashes: [Int]
+    private var items: [CollectionItem<Element, ID>]
     private var data: Data
     private var deleteActionProvider: ((Element, CollectionVGridLocation) -> Void)?
     private var deleteActionTitle: String
@@ -35,7 +35,7 @@ public class UICollectionVList<
         viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
-        self.currentElementIDHashes = []
+        self.items = data.map { CollectionItem(element: $0, id: $0[keyPath: id]) }
         self.data = data
         self.deleteActionProvider = deleteActionProvider
         self.deleteActionTitle = deleteActionTitle
@@ -72,7 +72,7 @@ public class UICollectionVList<
 
                     let deleteAction = UIContextualAction(style: .destructive, title: self.deleteActionTitle) { _, _, completionHandler in
 
-                        let item = self.data[context.row]
+                        let item = self.items[context.row].element
                         deleteActionProvider(item, .init(column: 0, row: context.row))
 
                         completionHandler(true)
@@ -94,9 +94,9 @@ public class UICollectionVList<
 
         return UICollectionViewCompositionalLayout { sectionIndex, environment -> NSCollectionLayoutSection? in
             if sectionIndex == 0 {
-                return makeHeaderSection(environment: environment)
+                makeHeaderSection(environment: environment)
             } else {
-                return makeContentSection(environment: environment)
+                makeContentSection(environment: environment)
             }
         }
     }
@@ -146,25 +146,11 @@ public class UICollectionVList<
 
         // data
 
-        let newIDs = newData
-            .map { $0[keyPath: _id].hashValue }
-
-        let changes = StagedChangeset(
-            source: currentElementIDHashes,
-            target: newIDs,
-            section: 0
-        )
-
-        if !changes.isEmpty {
-            data = newData
-
-            // TODO: Fix if necessary? See comment at top of UICollectionVGrid.swift.
-
-//            collectionView.reload(using: changes) { _ in
-//                self.currentElementIDHashes = newHashes
-//            }
-
-            currentElementIDHashes = newIDs
+        let newItems = newData.map { CollectionItem(element: $0, id: $0[keyPath: _id]) }
+        let changed = items.map(\.differenceIdentifier) != newItems.map(\.differenceIdentifier)
+        items = newItems
+        data = newData
+        if changed {
             collectionView.reloadData()
         }
 
@@ -183,7 +169,7 @@ public class UICollectionVList<
         if section == 0 {
             1
         } else {
-            currentElementIDHashes.count
+            items.count
         }
     }
 
@@ -200,9 +186,9 @@ public class UICollectionVList<
         if indexPath.section == 0 {
             cell.setup(view: AnyView(headerProvider()))
         } else {
-            let item = data[indexPath.row]
-            let location = CollectionVGridLocation(column: indexPath.row, row: indexPath.row)
-            cell.setup(view: AnyView(viewProvider(item, location)))
+            let item = items[indexPath.row].element
+            let location = CollectionVGridLocation(column: 0, row: indexPath.row)
+            cell.setup(view: AnyView(viewProvider(item, location)), id: AnyHashable(items[indexPath.row].id))
         }
 
         return cell

@@ -5,8 +5,9 @@ import PackageDescription
 let package = Package(
     name: "CollectionVGrid",
     platforms: [
-        .iOS(.v16),
-        .tvOS(.v16),
+        .iOS(.v18),
+        .tvOS(.v18),
+        .macOS(.v15),
     ],
     products: [
         .library(

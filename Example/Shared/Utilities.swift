@@ -6,7 +6,8 @@ enum LayoutOrientation: String {
 }
 
 enum LayoutType: String {
-    case grid = "Grid"
+    case adaptive = "Adaptive"
+    case grid = "Columns"
     case list = "List"
 }
 
@@ -36,5 +37,16 @@ extension View {
         } action: { size in
             binding.wrappedValue = size
         }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func exampleFocusable() -> some View {
+        #if os(tvOS)
+        focusable()
+        #else
+        self
+        #endif
     }
 }

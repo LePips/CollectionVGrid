@@ -1,6 +1,6 @@
 import SwiftUI
 
-#if !os(tvOS)
+#if os(iOS)
 public extension CollectionVList {
 
     func onRowDelete(title: String = "Delete", perform action: @escaping (Element) -> Void) -> Self {

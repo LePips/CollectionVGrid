@@ -1,4 +1,3 @@
-import DifferenceKit
 import SwiftUI
 
 public struct CollectionVGrid<
@@ -6,14 +5,13 @@ public struct CollectionVGrid<
     Data: Collection,
     ID: Hashable,
     Content: View
->: UIViewRepresentable where Data.Element == Element,
+> where Data.Element == Element,
 Data.Index == Int {
-
-    public typealias UIViewType = UICollectionVGrid<Element, Data, ID, Content>
 
     let _id: KeyPath<Element, ID>
     let data: Data
     let layout: CollectionVGridLayout
+    var refreshAction: (@MainActor () async -> Void)?
     var onReachedBottomEdge: () -> Void
     var onReachedBottomEdgeOffset: CollectionVGridEdgeOffset
     var onReachedTopEdge: () -> Void
@@ -40,9 +38,14 @@ Data.Index == Int {
         self.onReachedTopEdgeOffset = onReachedTopEdgeOffset
         self.viewProvider = viewProvider
     }
+}
+
+#if canImport(UIKit)
+extension CollectionVGrid: UIViewRepresentable {
+    public typealias UIViewType = UICollectionVGrid<Element, Data, ID, Content>
 
     public func makeUIView(context: Context) -> UIViewType {
-        UICollectionVGrid(
+        let view = UICollectionVGrid(
             id: _id,
             data: data,
             layout: layout,
@@ -53,9 +56,14 @@ Data.Index == Int {
             proxy: proxy,
             viewProvider: viewProvider
         )
+        #if os(iOS)
+        view.configureRefresh(action: refreshAction)
+        #endif
+        return view
     }
 
     public func updateUIView(_ view: UIViewType, context: Context) {
+        view.configure(self)
         view.update(
             data: data,
             layout: layout,
@@ -64,4 +72,11 @@ Data.Index == Int {
             viewProvider: viewProvider
         )
     }
+
+    public static func dismantleUIView(_ view: UIViewType, coordinator: ()) {
+        #if os(iOS)
+        view.configureRefresh(action: nil)
+        #endif
+    }
 }
+#endif

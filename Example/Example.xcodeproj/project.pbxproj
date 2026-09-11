@@ -3,16 +3,18 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 71;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A396E1C60AA88C0F660B0F55 /* CollectionVGrid in Frameworks */ = {isa = PBXBuildFile; productRef = 196E5081B512C2AE3C3144D2 /* CollectionVGrid */; };
 		E1D5A4762D079958004D18B7 /* IdentifiedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = E1D5A4752D079958004D18B7 /* IdentifiedCollections */; };
 		E1D670E52B193C69006161A9 /* CollectionVGrid in Frameworks */ = {isa = PBXBuildFile; productRef = E1D670E42B193C69006161A9 /* CollectionVGrid */; };
 		E1D670F92B193CAE006161A9 /* CollectionVGrid in Frameworks */ = {isa = PBXBuildFile; productRef = E1D670F82B193CAE006161A9 /* CollectionVGrid */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1E54A5058E60CC673CB14006 /* CollectionVGridExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CollectionVGridExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E14B26AC2B15B30800330583 /* iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1D670EA2B193C8D006161A9 /* tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tvOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -24,6 +26,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		565553CA1F5CE3ECE77EB4B9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A396E1C60AA88C0F660B0F55 /* CollectionVGrid in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E14B26A92B15B30800330583 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -58,6 +68,7 @@
 		E14B26AD2B15B30800330583 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				1E54A5058E60CC673CB14006 /* CollectionVGridExample.app */,
 				E14B26AC2B15B30800330583 /* iOS.app */,
 				E1D670EA2B193C8D006161A9 /* tvOS.app */,
 			);
@@ -74,6 +85,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		7463D1F6154B6AB801DECFCD /* macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4A8B01F29C6A3492B359998A /* Build configuration list for PBXNativeTarget "macOS" */;
+			buildPhases = (
+				3A5FB691BE621C7044F54304 /* Sources */,
+				565553CA1F5CE3ECE77EB4B9 /* Frameworks */,
+				FBAAEC8A20CE83ECCC1094B1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E1435B612E14C359007377C9 /* Shared */,
+			);
+			name = macOS;
+			packageProductDependencies = (
+				196E5081B512C2AE3C3144D2 /* CollectionVGrid */,
+			);
+			productName = CollectionVGridExample;
+			productReference = 1E54A5058E60CC673CB14006 /* CollectionVGridExample.app */;
+			productType = "com.apple.product-type.application";
+		};
 		E14B26AB2B15B30800330583 /* iOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = E14B26BA2B15B30900330583 /* Build configuration list for PBXNativeTarget "iOS" */;
@@ -87,8 +121,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				E1435B522E14C342007377C9 /* iOS */,
 				E1435B612E14C359007377C9 /* Shared */,
+				E1435B522E14C342007377C9 /* iOS */,
 			);
 			name = iOS;
 			packageProductDependencies = (
@@ -112,8 +146,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				E1435B5B2E14C344007377C9 /* tvOS */,
 				E1435B612E14C359007377C9 /* Shared */,
+				E1435B5B2E14C344007377C9 /* tvOS */,
 			);
 			name = tvOS;
 			packageProductDependencies = (
@@ -133,6 +167,9 @@
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					7463D1F6154B6AB801DECFCD = {
+						CreatedOnToolsVersion = 16.0;
+					};
 					E14B26AB2B15B30800330583 = {
 						CreatedOnToolsVersion = 15.0;
 					};
@@ -158,6 +195,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				7463D1F6154B6AB801DECFCD /* macOS */,
 				E14B26AB2B15B30800330583 /* iOS */,
 				E1D670E92B193C8D006161A9 /* tvOS */,
 			);
@@ -179,9 +217,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FBAAEC8A20CE83ECCC1094B1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3A5FB691BE621C7044F54304 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E14B26A82B15B30800330583 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -199,6 +251,33 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		87A007B7D65883F86F60CEC6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CollectionVGrid;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.CollectionVGrid.macOS;
+				PRODUCT_NAME = CollectionVGridExample;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
 		E14B26B82B15B30900330583 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -434,9 +513,45 @@
 			};
 			name = Release;
 		};
+		EBC5DED5FA532EB3DC275182 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CollectionVGrid;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.CollectionVGrid.macOS;
+				PRODUCT_NAME = CollectionVGridExample;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		4A8B01F29C6A3492B359998A /* Build configuration list for PBXNativeTarget "macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				87A007B7D65883F86F60CEC6 /* Debug */,
+				EBC5DED5FA532EB3DC275182 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		E14B26A72B15B30800330583 /* Build configuration list for PBXProject "Example" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -485,6 +600,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		196E5081B512C2AE3C3144D2 /* CollectionVGrid */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CollectionVGrid;
+		};
 		E1D5A4752D079958004D18B7 /* IdentifiedCollections */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1D5A4732D079931004D18B7 /* XCRemoteSwiftPackageReference "swift-identified-collections" */;
