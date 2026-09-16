@@ -18,9 +18,9 @@ struct CollectionVGridHostedResizeTests {
         return nil
     }
 
-    @Test
-    func hostedCollectionResizesAndStaysVirtualized() async throws {
-        let host = UIHostingController(rootView: CollectionVGridResizeFixture())
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func hostedCollectionResizesAndStaysVirtualized(sizing: CollectionVGridLayout.ItemSizing) async throws {
+        let host = UIHostingController(rootView: CollectionVGridResizeFixture(sizing: sizing))
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1024, height: 1000))
         window.rootViewController = host
         window.makeKeyAndVisible()
@@ -37,7 +37,7 @@ struct CollectionVGridHostedResizeTests {
             let item = try #require(collection.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
             let expectedWidth = (collection.bounds.width - 40 - 20) / 3
             #expect(abs(item.size.width - expectedWidth) <= 0.1)
-            #expect(abs(item.size.height - (expectedWidth * 1.5)) <= 0.1)
+            #expect(abs(item.size.height - (sizing == .height ? 50 : expectedWidth * 1.5)) <= 0.1)
             #expect(collection.visibleCells.count < 100)
             let third = try #require(collection.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: 2, section: 0)))
             let fourth = try #require(collection.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: 3, section: 0)))
@@ -48,13 +48,25 @@ struct CollectionVGridHostedResizeTests {
 }
 
 private struct CollectionVGridResizeFixture: View {
+    let sizing: CollectionVGridLayout.ItemSizing
+
     var body: some View {
         VStack(spacing: 0) {
             CollectionVGrid(
                 count: 10000,
-                layout: .columns(3, insets: .init(top: 0, leading: 20, bottom: 0, trailing: 20), itemSpacing: 10, lineSpacing: 10)
+                layout: .columns(
+                    3,
+                    insets: .init(top: 0, leading: 20, bottom: 0, trailing: 20),
+                    itemSpacing: 10,
+                    lineSpacing: 10,
+                    itemSizing: sizing
+                )
             ) { _ in
-                Color.blue.aspectRatio(2 / 3, contentMode: .fill)
+                if sizing == .height {
+                    Color.blue.frame(height: 50)
+                } else {
+                    Color.blue.aspectRatio(2 / 3, contentMode: .fill)
+                }
             }
             Spacer(minLength: 0)
         }.ignoresSafeArea()

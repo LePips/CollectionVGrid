@@ -37,7 +37,13 @@ public class UICollectionVGrid<
     private var _id: KeyPath<Element, ID>
 
     private var columns: Int
-    private var items: [CollectionItem<Element, ID>]
+    private var dataIndex = CollectionDataIndex<ID>()
+    private var stagedItems: [CollectionItem<ID>]?
+    private var dataTransition: CollectionDataTransition<Data, ID>?
+    private var itemCount: Int {
+        stagedItems?.count ?? dataIndex.ids.count
+    }
+
     private var data: Data
     private var itemSizeCache = ItemSizeCache()
     private var itemSize: CGSize?
@@ -73,7 +79,6 @@ public class UICollectionVGrid<
     ) {
         self._id = id
         self.columns = 1
-        self.items = []
         self.data = data
         self.layout = layout
         self.onReachedBottomEdge = onReachedBottomEdge
@@ -192,12 +197,23 @@ public class UICollectionVGrid<
 
     private func refreshVisibleItems() {
         for path in collectionView.indexPathsForVisibleItems {
-            guard items.indices.contains(path.item),
+            guard (0 ..< itemCount).contains(path.item),
                   let cell = collectionView.cellForItem(at: path) as? HostingCollectionViewCell<Content> else { continue }
-            let item = items[path.item]
+            let item = item(at: path.item)
             let location = CollectionVGridLocation(column: path.item % max(columns, 1), row: path.item / max(columns, 1))
-            cell.setup(view: viewProvider(item.element, location), id: AnyHashable(item.differenceIdentifier))
+            cell.setup(view: viewProvider(element(at: path.item), location), id: AnyHashable(item.differenceIdentifier))
         }
+    }
+
+    private func item(at position: Int) -> CollectionItem<ID> {
+        stagedItems?[position] ?? dataIndex.item(at: position)
+    }
+
+    private func element(at position: Int) -> Element {
+        if let stagedItems, let dataTransition {
+            return dataTransition.element(for: stagedItems[position].id, in: data, index: dataIndex)
+        }
+        return dataIndex.element(in: data, at: position)
     }
 
     // MARK: update
@@ -226,15 +242,26 @@ public class UICollectionVGrid<
 
         // data
 
-        let newItems = newData.map { CollectionItem(element: $0, id: $0[keyPath: _id]) }
-        precondition(Set(newItems.map(\.id)).count == newItems.count, "CollectionVGrid requires unique element IDs")
-        let changes = StagedChangeset(source: items, target: newItems, section: 0)
-        let hasDataChanges = changes.isNotEmpty
-        data = newData
+        var newIndex = dataIndex
+        var lookup: [ID: Int]?
+        let hasDataChanges = newIndex.update(from: newData, id: _id, prefix: nil, lookup: &lookup)
         if hasDataChanges {
-            collectionView.reload(using: changes) { self.items = $0 }
+            let source = dataIndex.items()
+            let target = newIndex.items()
+            let changes = StagedChangeset(source: source, target: target, section: 0)
+            dataTransition = CollectionDataTransition(
+                previousData: data, previousIndex: dataIndex, currentIndex: newIndex,
+                lookup: &lookup, hasDeletions: changes.contains { !$0.elementDeleted.isEmpty }
+            )
+            stagedItems = source
+            data = newData
+            dataIndex = newIndex
+            collectionView.reload(using: changes) { self.stagedItems = $0 }
+            stagedItems = nil
+            dataTransition = nil
         } else {
-            items = newItems
+            data = newData
+            dataIndex = newIndex
         }
         refreshVisibleItems()
 
@@ -304,7 +331,7 @@ public class UICollectionVGrid<
         _ collectionView: UICollectionView,
         numberOfItemsInSection section: Int
     ) -> Int {
-        items.count
+        itemCount
     }
 
     public func collectionView(
@@ -317,9 +344,9 @@ public class UICollectionVGrid<
             for: indexPath
         ) as! HostingCollectionViewCell<Content>
 
-        let item = items[indexPath.item].element
+        let element = element(at: indexPath.item)
         let location = CollectionVGridLocation(column: indexPath.row % columns, row: indexPath.row / columns)
-        cell.setup(view: viewProvider(item, location), id: AnyHashable(items[indexPath.item].differenceIdentifier))
+        cell.setup(view: viewProvider(element, location), id: AnyHashable(item(at: indexPath.item).differenceIdentifier))
         return cell
     }
 
@@ -401,9 +428,9 @@ public class UICollectionVGrid<
                 .map(\.row)
                 .max() ?? Int.min
             let itemCount = itemCount(inRows: rows)
-            let firstBottomRowIndex = itemCount >= items.count
+            let firstBottomRowIndex = itemCount >= self.itemCount
                 ? 0
-                : items.count - itemCount
+                : self.itemCount - itemCount
 
             reachedBottom = maxIndexPath >= firstBottomRowIndex
         }
@@ -485,7 +512,7 @@ public class UICollectionVGrid<
             return CGSize(width: nonnegativeFinite(width), height: 0)
         }
 
-        return itemSizeCache.size(width: width) {
+        return itemSizeCache.size(width: width, sizing: layout.itemSizing) {
             let measurement = ContentMeasurement()
             let root = ContentMeasurementLayout(width: width, measurement: measurement) {
                 viewProvider(data[data.startIndex], .init(column: -1, row: -1)).frame(width: width)

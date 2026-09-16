@@ -44,44 +44,62 @@ struct LayoutMetricsTests {
 }
 
 struct ItemSizeCacheTests {
-    @Test
-    func resizingReusesUnroundedContentProportions() {
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func resizingReusesUnroundedContentMeasurement(sizing: CollectionVGridLayout.ItemSizing) {
         var cache = ItemSizeCache()
         var measurements = 0
         for width: CGFloat in [81.25, 100, 240.5] {
-            let size = cache.size(width: width) {
+            let size = cache.size(width: width, sizing: sizing) {
                 measurements += 1
                 return CGSize(width: 81.25, height: 121.875)
             }
             #expect(size.width == width)
-            #expect(abs(size.height - width * 1.5) < 0.0001)
+            let expectedHeight = sizing == .height ? 121.875 : width * 1.5
+            #expect(abs(size.height - expectedHeight) < 0.0001)
         }
         #expect(measurements == 1)
     }
 
-    @Test
-    func invalidMeasurementsDoNotPoisonTheCache() {
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func invalidMeasurementsDoNotPoisonTheCache(sizing: CollectionVGridLayout.ItemSizing) {
         var cache = ItemSizeCache()
         var measurements = 0
-        for height: CGFloat in [0, .nan, .infinity] {
-            #expect(cache.size(width: 100) {
+        for height: CGFloat in [0, -1, .nan, .infinity] {
+            #expect(cache.size(width: 100, sizing: sizing) {
                 measurements += 1
                 return CGSize(width: 100, height: height)
             }.height == 0)
         }
-        #expect(measurements == 3)
-        #expect(cache.size(width: 100) { CGSize(width: 100, height: 50) }.height == 50)
-        #expect(cache.size(width: 200) { Issue.record("A valid ratio should be cached"); return .zero }.height == 100)
+        #expect(measurements == 4)
+        #expect(cache.size(width: 100, sizing: sizing) { CGSize(width: 100, height: 50) }.height == 50)
+        let resized = cache.size(width: 200, sizing: sizing) {
+            Issue.record("A valid measurement should be cached")
+            return .zero
+        }
+        #expect(resized.height == (sizing == .height ? 50 : 100))
         cache = ItemSizeCache()
-        #expect(cache.size(width: 100) { CGSize(width: 100, height: 75) }.height == 75)
+        #expect(cache.size(width: 100, sizing: sizing) { CGSize(width: 100, height: 75) }.height == 75)
+    }
+
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func invalidWidthsNeverMeasureContent(sizing: CollectionVGridLayout.ItemSizing) {
+        var cache = ItemSizeCache()
+        for width: CGFloat in [0, -1, .nan, .infinity] {
+            #expect(cache.size(width: width, sizing: sizing) { Issue.record("Invalid widths must not measure")
+                return .zero
+            } == .zero)
+        }
+        #expect(cache.size(width: 100, sizing: sizing) { CGSize(width: 100, height: 50) }.height == 50)
     }
 
     @Test
-    func invalidWidthsNeverMeasureContent() {
+    func changingSizingRemeasuresInsteadOfReinterpretingTheCachedValue() {
         var cache = ItemSizeCache()
-        for width: CGFloat in [0, -1, .nan, .infinity] {
-            #expect(cache.size(width: width) { Issue.record("Invalid widths must not measure"); return .zero } == .zero)
-        }
         #expect(cache.size(width: 100) { CGSize(width: 100, height: 50) }.height == 50)
+        #expect(cache.size(width: 200, sizing: .height) { CGSize(width: 200, height: 75) }.height == 75)
+        #expect(cache.size(width: 100, sizing: .aspectRatio) { CGSize(width: 100, height: 40) }.height == 40)
+        #expect(cache.size(width: 200) { Issue.record("The new ratio should be cached")
+            return .zero
+        }.height == 80)
     }
 }

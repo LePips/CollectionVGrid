@@ -7,32 +7,36 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct MacOSCollectionVGridTests {
-    @Test
-    func measurementsAreCachedAndRedrawRemeasures() {
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func measurementsAreCachedAndRedrawRemeasures(sizing: CollectionVGridLayout.ItemSizing) {
         let proxy = CollectionVGridProxy()
         let model = SizeModel()
-        let configuration = CollectionVGrid(count: 10000, layout: .columns(2, insets: .init(), itemSpacing: 10)) { _ in
+        let configuration = CollectionVGrid(count: 10000, layout: .columns(2, insets: .init(), itemSpacing: 10, itemSizing: sizing)) { _ in
             Color.blue.frame(height: model.height)
         }.proxy(proxy)
         let view = NSCollectionVGrid(configuration: configuration)
         #expect(view.computeItemSize(forWidth: 210).itemSize == CGSize(width: 100, height: 50))
-        // Cached proportions survive content changes until explicitly redrawn.
+        // Cached measurements survive content changes until explicitly redrawn.
         model.height = 75
-        #expect(view.computeItemSize(forWidth: 410).itemSize == CGSize(width: 200, height: 100))
-        #expect(view.computeItemSize(forWidth: 310).itemSize == CGSize(width: 150, height: 75))
+        #expect(view.computeItemSize(forWidth: 410).itemSize == CGSize(width: 200, height: sizing == .height ? 50 : 100))
+        #expect(view.computeItemSize(forWidth: 310).itemSize == CGSize(width: 150, height: sizing == .height ? 50 : 75))
         proxy.redraw()
         #expect(view.computeItemSize(forWidth: 210).itemSize.height == 75)
         view.disconnect()
     }
 
-    @Test
-    func nativeGridRemainsVirtualizedAcrossResizesAndDistantScroll() async throws {
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func nativeGridRemainsVirtualizedAcrossResizesAndDistantScroll(sizing: CollectionVGridLayout.ItemSizing) async throws {
         _ = NSApplication.shared
         let configuration = CollectionVGrid(
             count: 10000,
-            layout: .columns(3, insets: .init(top: 10, leading: 20, bottom: 10, trailing: 20))
+            layout: .columns(3, insets: .init(top: 10, leading: 20, bottom: 10, trailing: 20), itemSizing: sizing)
         ) { _ in
-            Color.blue.aspectRatio(2 / 3, contentMode: .fit)
+            if sizing == .height {
+                Color.blue.frame(height: 50)
+            } else {
+                Color.blue.aspectRatio(2 / 3, contentMode: .fit)
+            }
         }
         let view = NSCollectionVGrid(configuration: configuration)
         let window = makeWindow(view)
@@ -48,17 +52,17 @@ struct MacOSCollectionVGridTests {
             let item = try #require(view.collectionLayout.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
             let expected = (view.scrollView.contentSize.width - 60) / 3
             #expect(abs(item.size.width - expected) < 0.01)
-            #expect(abs(item.size.height - expected * 1.5) < 0.1)
+            #expect(abs(item.size.height - (sizing == .height ? 50 : expected * 1.5)) < 0.1)
             #expect(view.collectionView.numberOfItems(inSection: 0) == 10000)
             #expect(!view.collectionView.visibleItems().isEmpty)
-            #expect(view.collectionView.visibleItems().count < 40)
+            #expect(view.collectionView.visibleItems().count < 100)
         }
         let distant = try #require(view.collectionLayout.layoutAttributesForItem(at: IndexPath(item: 9000, section: 0)))
         view.scrollView.contentView.scroll(to: distant.frame.origin)
         view.scrollView.reflectScrolledClipView(view.scrollView.contentView)
         try await Task.sleep(for: .milliseconds(100))
         #expect(view.collectionView.indexPathsForVisibleItems().contains { $0.item >= 9000 })
-        #expect(view.collectionView.visibleItems().count < 40)
+        #expect(view.collectionView.visibleItems().count < 100)
     }
 
     @Test
@@ -68,7 +72,7 @@ struct MacOSCollectionVGridTests {
         let configuration = CollectionVGrid(
             uniqueElements: Array(0 ..< 100),
             id: \.self,
-            layout: .minWidth(100, insets: .init(), itemSpacing: 10)
+            layout: .minWidth(100, insets: .init(), itemSpacing: 10, itemSizing: .height)
         ) { element, location in
             locations[element] = location
             return Color.blue.frame(height: 50)
@@ -76,6 +80,8 @@ struct MacOSCollectionVGridTests {
         let view = NSCollectionVGrid(configuration: configuration)
         #expect(view.computeItemSize(forWidth: 210).columns == 2)
         #expect(view.computeItemSize(forWidth: 410).columns == 3)
+        #expect(view.computeItemSize(forWidth: 210).itemSize.height == 50)
+        #expect(view.computeItemSize(forWidth: 410).itemSize.height == 50)
         let window = makeWindow(view)
         defer { view.disconnect()
             window.close()
@@ -90,6 +96,39 @@ struct MacOSCollectionVGridTests {
         try await Task.sleep(for: .milliseconds(100))
         #expect(locations[4]?.column == 0)
         #expect(locations[4]?.row == 2)
+    }
+
+    @Test
+    func changingSizingUpdatesLayoutAtTheSameWidth() throws {
+        let model = SizeModel()
+        func configuration(_ sizing: CollectionVGridLayout.ItemSizing) -> CollectionVGrid<Int, [Int], Int, some View> {
+            CollectionVGrid(count: 10, layout: .columns(1, insets: .init(), itemSizing: sizing)) { _ in
+                Color.blue.frame(height: model.height)
+            }
+        }
+        let view = NSCollectionVGrid(configuration: configuration(.aspectRatio))
+        defer { view.disconnect() }
+        view.frame = CGRect(x: 0, y: 0, width: 300, height: 400)
+        view.layoutSubtreeIfNeeded()
+        #expect(view.collectionLayout.itemSize.height == 50)
+
+        model.height = 75
+        view.update(configuration: configuration(.height), isScrollEnabled: true, indicatorVisibility: .automatic, dynamicTypeSize: .large)
+        view.layoutSubtreeIfNeeded()
+        let item = try #require(view.collectionLayout.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
+        #expect(item.size.height == 75)
+        #expect(view.computeItemSize(forWidth: 600).itemSize.height == 75)
+
+        model.height = 40
+        view.update(
+            configuration: configuration(.aspectRatio),
+            isScrollEnabled: true,
+            indicatorVisibility: .automatic,
+            dynamicTypeSize: .large
+        )
+        view.layoutSubtreeIfNeeded()
+        #expect(view.collectionLayout.itemSize.height == 40)
+        #expect(view.computeItemSize(forWidth: view.collectionLayout.itemSize.width * 2).itemSize.height == 80)
     }
 
     @Test
@@ -178,7 +217,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func visibleLayoutBenchmark() {
+    func visibleLayoutAttributesAreIndependentOfTotalItemCount() {
         var expectedAttributes: Int?
         for count in [100, 10000, 100_000] {
             let view = NSCollectionVGrid(configuration: CollectionVGrid(count: count, layout: .columns(3)) { _ in
@@ -186,19 +225,13 @@ struct MacOSCollectionVGridTests {
             })
             view.frame = CGRect(x: 0, y: 0, width: 500, height: 200)
             view.layoutSubtreeIfNeeded()
-            var attributes = 0
-            let elapsed = ContinuousClock().measure {
-                for _ in 0 ..< 5000 {
-                    attributes += view.collectionLayout.layoutAttributesForElements(in: CGRect(x: 0, y: 0, width: 500, height: 200)).count
-                }
-            }
+            let attributes = view.collectionLayout.layoutAttributesForElements(in: CGRect(x: 0, y: 0, width: 500, height: 200)).count
             if let expectedAttributes {
                 #expect(attributes == expectedAttributes)
             } else {
                 expectedAttributes = attributes
             }
-            #expect(attributes > 0 && attributes < 100_000)
-            print("LAYOUT_BENCHMARK items=\(count) queries=5000 duration=\(elapsed)")
+            #expect(attributes > 0 && attributes < 20)
             view.disconnect()
         }
     }

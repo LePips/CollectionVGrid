@@ -22,7 +22,9 @@ struct CollectionVGridRefreshTests {
     }
 
     private func findCollection(in view: UIView) -> UICollectionView? {
-        if let collection = view as? UICollectionView { return collection }
+        if let collection = view as? UICollectionView {
+            return collection
+        }
         return view.subviews.lazy.compactMap { findCollection(in: $0) }.first
     }
 
@@ -134,13 +136,13 @@ struct CollectionVGridRefreshTests {
             await gate.wait()
             wasCancelled = Task.isCancelled
         })
-        let window = makeWindow(containing: try #require(view))
+        let window = try makeWindow(containing: #require(view))
         defer { window.isHidden = true }
         let control = try #require(view.flatMap { findCollection(in: $0) }?.refreshControl)
         control.beginRefreshing()
         try sendRefreshEvent(to: control)
         try await waitUntil { gate.isWaiting }
-        Grid.dismantleUIView(try #require(view), coordinator: ())
+        try Grid.dismantleUIView(#require(view), coordinator: ())
         #expect(!control.isRefreshing)
         view?.removeFromSuperview()
         view = nil
@@ -176,7 +178,9 @@ struct CollectionVGridRefreshTests {
 @MainActor
 private final class RefreshGate {
     private var continuation: CheckedContinuation<Void, Never>?
-    var isWaiting: Bool { continuation != nil }
+    var isWaiting: Bool {
+        continuation != nil
+    }
 
     func wait() async {
         await withCheckedContinuation { continuation = $0 }

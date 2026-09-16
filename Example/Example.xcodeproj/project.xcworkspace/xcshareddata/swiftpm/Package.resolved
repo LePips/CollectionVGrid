@@ -1,4 +1,5 @@
 {
+  "originHash" : "6d9c471d9c69c32e576ab4d1649f63e791eb3c84cfefff768743e4637a05c596",
   "pins" : [
     {
       "identity" : "differencekit",
@@ -14,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-collections",
       "state" : {
-        "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
-        "version" : "1.1.4"
+        "revision" : "a0cb0954ecb21e4e31b0070e6ed5674e8556685a",
+        "version" : "1.6.0"
       }
     },
     {
@@ -23,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-identified-collections",
       "state" : {
-        "revision" : "2f5ab6e091dd032b63dacbda052405756010dc3b",
-        "version" : "1.1.0"
+        "revision" : "322d9ffeeba85c9f7c4984b39422ec7cc3c56597",
+        "version" : "1.1.1"
       }
     }
   ],

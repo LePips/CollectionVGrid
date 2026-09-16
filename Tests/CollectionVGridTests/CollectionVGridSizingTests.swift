@@ -7,10 +7,10 @@ import Testing
 @MainActor
 struct CollectionVGridSizingTests {
 
-    @Test
-    func contentMeasurementIsCachedAcrossResizeWidths() {
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func contentMeasurementIsCachedAcrossResizeWidths(sizing: CollectionVGridLayout.ItemSizing) {
         let counter = MeasurementCounter()
-        let grid = makeGrid(counter: counter)
+        let grid = makeGrid(counter: counter, layout: .columns(2, itemSizing: sizing))
 
         grid.bounds = CGRect(x: 0, y: 0, width: 210, height: 500)
         grid.layoutSubviews()
@@ -22,6 +22,46 @@ struct CollectionVGridSizingTests {
         grid.layoutSubviews()
 
         #expect(counter.value == 1)
+    }
+
+    @Test
+    func measuredHeightStaysFixedAcrossAdaptiveColumnChanges() {
+        let counter = MeasurementCounter()
+        let grid = makeGrid(counter: counter, layout: .minWidth(100, insets: .init(), itemSpacing: 10, itemSizing: .height))
+        let initial = grid.computeItemSize(forWidth: 210)
+        let resized = grid.computeItemSize(forWidth: 410)
+        #expect(initial.columns == 2)
+        #expect(resized.columns == 3)
+        #expect(initial.itemSize.height == 50)
+        #expect(resized.itemSize.height == 50)
+        #expect(counter.value == 1)
+    }
+
+    @Test
+    func changingSizingUpdatesLayoutAtTheSameWidth() throws {
+        let counter = MeasurementCounter()
+        let grid = makeGrid(counter: counter)
+        func layout(_ sizing: CollectionVGridLayout.ItemSizing) -> CollectionVGridLayout {
+            .columns(2, insets: .init(), itemSpacing: 10, itemSizing: sizing)
+        }
+        grid.update(data: [0], layout: layout(.aspectRatio), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
+        grid.bounds = CGRect(x: 0, y: 0, width: 210, height: 500)
+        grid.layoutSubviews()
+        let collectionView = try #require(grid.subviews.compactMap { $0 as? UICollectionView }.first)
+        #expect(collectionView.flowLayout.itemSize.height == 50)
+
+        counter.height = 75
+        grid.update(data: [0], layout: layout(.height), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
+        grid.layoutSubviews()
+        let item = try #require(collectionView.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
+        #expect(item.size.height == 75)
+        #expect(grid.computeItemSize(forWidth: 410).itemSize.height == 75)
+
+        counter.height = 40
+        grid.update(data: [0], layout: layout(.aspectRatio), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
+        grid.layoutSubviews()
+        #expect(collectionView.flowLayout.itemSize.height == 40)
+        #expect(grid.computeItemSize(forWidth: 410).itemSize.height == 80)
     }
 
     @Test
@@ -44,19 +84,22 @@ struct CollectionVGridSizingTests {
         #expect(abs(grid.computeItemSize(forWidth: 810).itemSize.height - 600) <= 0.001)
     }
 
-    @Test
-    func dataChangesAndDynamicTypeRemeasureContent() {
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    func dataChangesAndDynamicTypeRemeasureContent(sizing: CollectionVGridLayout.ItemSizing) {
         let counter = MeasurementCounter()
-        let grid = makeGrid(counter: counter)
+        let layout = CollectionVGridLayout.columns(2, insets: .init(), itemSpacing: 10, itemSizing: sizing)
+        let grid = makeGrid(counter: counter, layout: layout)
         #expect(grid.computeItemSize(forWidth: 210).itemSize.height == 50)
-        #expect(grid.computeItemSize(forWidth: 410).itemSize.height == 100)
+        #expect(grid.computeItemSize(forWidth: 410).itemSize.height == (sizing == .height ? 50 : 100))
+        counter.height = 75
         grid.update(
             data: [1],
-            layout: .columns(2, insets: .init(), itemSpacing: 10, lineSpacing: 10),
+            layout: layout,
             isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic
         )
-        #expect(grid.computeItemSize(forWidth: 410).itemSize.height == 50)
+        #expect(grid.computeItemSize(forWidth: 410).itemSize.height == 75)
         #expect(counter.value == 2)
+        counter.height = 50
         grid.traitCollectionDidChange(UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge))
         #expect(grid.computeItemSize(forWidth: 210).itemSize.height == 50)
         #expect(counter.value == 3)
@@ -252,16 +295,13 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func largeCollectionResizePerformance() {
+    func largeCollectionResizeReusesInitialMeasurement() {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter, data: Array(0 ..< 10000))
-        let duration = ContinuousClock().measure {
-            for step in 0 ..< 120 {
-                let width = CGFloat(320 + step * 8)
-                _ = grid.computeItemSize(forWidth: width)
-            }
+        for step in 0 ..< 120 {
+            let width = CGFloat(320 + step * 8)
+            _ = grid.computeItemSize(forWidth: width)
         }
-        print("CollectionVGrid: 120 resizes with 10,000 items took \(duration)")
         #expect(counter.value == 1, "Resizing must reuse the initial content measurement")
     }
 

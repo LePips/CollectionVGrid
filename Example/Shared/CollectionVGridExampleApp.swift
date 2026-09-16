@@ -6,7 +6,7 @@ struct CollectionVGridExampleApp: App {
         WindowGroup("CollectionVGrid") {
             ContentView()
                 #if os(macOS)
-                .frame(minWidth: 680, minHeight: 480)
+                    .frame(minWidth: 680, minHeight: 480)
                 #endif
         }
         #if os(macOS)

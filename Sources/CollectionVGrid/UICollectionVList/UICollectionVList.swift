@@ -1,5 +1,4 @@
 #if os(iOS)
-import DifferenceKit
 import SwiftUI
 
 public class UICollectionVList<
@@ -17,7 +16,7 @@ public class UICollectionVList<
 
     private var _id: KeyPath<Element, ID>
 
-    private var items: [CollectionItem<Element, ID>]
+    private var dataIndex = CollectionDataIndex<ID>()
     private var data: Data
     private var deleteActionProvider: ((Element, CollectionVGridLocation) -> Void)?
     private var deleteActionTitle: String
@@ -35,7 +34,7 @@ public class UICollectionVList<
         viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
-        self.items = data.map { CollectionItem(element: $0, id: $0[keyPath: id]) }
+        self.dataIndex.update(from: data, id: id, prefix: nil)
         self.data = data
         self.deleteActionProvider = deleteActionProvider
         self.deleteActionTitle = deleteActionTitle
@@ -72,7 +71,7 @@ public class UICollectionVList<
 
                     let deleteAction = UIContextualAction(style: .destructive, title: self.deleteActionTitle) { _, _, completionHandler in
 
-                        let item = self.items[context.row].element
+                        let item = self.dataIndex.element(in: self.data, at: context.row)
                         deleteActionProvider(item, .init(column: 0, row: context.row))
 
                         completionHandler(true)
@@ -131,9 +130,7 @@ public class UICollectionVList<
         super.layoutSubviews()
 
         itemSize = nil
-        collectionView.performBatchUpdates {
-            collectionView.collectionViewLayout.invalidateLayout()
-        }
+        collectionView.collectionViewLayout.invalidateLayout()
     }
 
     // MARK: update
@@ -146,12 +143,21 @@ public class UICollectionVList<
 
         // data
 
-        let newItems = newData.map { CollectionItem(element: $0, id: $0[keyPath: _id]) }
-        let changed = items.map(\.differenceIdentifier) != newItems.map(\.differenceIdentifier)
-        items = newItems
+        let changed = dataIndex.update(from: newData, id: _id, prefix: nil)
         data = newData
         if changed {
             collectionView.reloadData()
+        } else {
+            // IDs can remain unchanged while the source supplies new content.
+            for path in collectionView.indexPathsForVisibleItems where path.section == 1 {
+                guard dataIndex.ids.indices.contains(path.item),
+                      let cell = collectionView.cellForItem(at: path) as? HostingCollectionViewCell<AnyView> else { continue }
+                let element = dataIndex.element(in: data, at: path.item)
+                cell.setup(
+                    view: AnyView(viewProvider(element, .init(column: 0, row: path.item))),
+                    id: AnyHashable(dataIndex.ids[path.item])
+                )
+            }
         }
 
         collectionView.isScrollEnabled = isScrollEnabled
@@ -169,7 +175,7 @@ public class UICollectionVList<
         if section == 0 {
             1
         } else {
-            items.count
+            dataIndex.ids.count
         }
     }
 
@@ -186,9 +192,9 @@ public class UICollectionVList<
         if indexPath.section == 0 {
             cell.setup(view: AnyView(headerProvider()))
         } else {
-            let item = items[indexPath.row].element
+            let item = dataIndex.element(in: data, at: indexPath.row)
             let location = CollectionVGridLocation(column: 0, row: indexPath.row)
-            cell.setup(view: AnyView(viewProvider(item, location)), id: AnyHashable(items[indexPath.row].id))
+            cell.setup(view: AnyView(viewProvider(item, location)), id: AnyHashable(dataIndex.ids[indexPath.row]))
         }
 
         return cell

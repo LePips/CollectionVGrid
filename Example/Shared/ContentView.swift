@@ -16,7 +16,7 @@ struct ContentView: View {
         case .grid:
             .columns(columns)
         case .list:
-            .columns(1)
+            .columns(1, itemSizing: .height)
         }
     }
 

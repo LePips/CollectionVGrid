@@ -37,9 +37,13 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     let collectionView = CollectionDocumentView()
     let collectionLayout = CollectionLayout()
     private var dataSource: NSCollectionViewDiffableDataSource<Int, ID>!
-    private var ids: [ID] = []
-    private var elements: [Element] = []
-    private var elementsByID: [ID: Element] = [:]
+    private var dataIndex = CollectionDataIndex<ID>()
+    private var indicesByID: [ID: Int] = [:]
+    private var ids: [ID] {
+        dataIndex.ids
+    }
+
+    private var updating = false
     private var itemSizeCache = ItemSizeCache()
     private var appliedWidth: CGFloat?
     private var dynamicTypeSize: DynamicTypeSize?
@@ -70,7 +74,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         dataSource = NSCollectionViewDiffableDataSource(collectionView: collectionView) { [weak self] collection, path, id in
-            guard let self, let element = self.elementsByID[id] else { return nil }
+            guard let self, let element = self.element(at: path.item, id: id) else { return nil }
             let item = collection.makeItem(withIdentifier: .init("content"), for: path) as! HostingCollectionViewItem
             item.configure(self.configuration.viewProvider(element, self.location(at: path.item)), id: AnyHashable(id))
             return item
@@ -129,19 +133,14 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         if configuration.proxy !== new.proxy, configuration.proxy?.collectionVGrid === self {
             configuration.proxy?.collectionVGrid = nil
         }
+        let changedData = dataIndex.update(from: new.data, id: new._id, prefix: nil, retainingLookup: &indicesByID)
+        updating = changedData
         configuration = new
         self.dynamicTypeSize = dynamicTypeSize
         new.proxy?.collectionVGrid = self
         scrollView.allowsScrolling = isScrollEnabled
         scrollView.hasVerticalScroller = isScrollEnabled && indicatorVisibility != .hidden
         scrollView.verticalScroller?.isEnabled = isScrollEnabled
-        let newElements = Array(new.data)
-        let newIDs = newElements.map { $0[keyPath: new._id] }
-        precondition(Set(newIDs).count == newIDs.count, "CollectionVGrid requires unique element IDs")
-        let changedData = newIDs != ids
-        elements = newElements
-        ids = newIDs
-        elementsByID = Dictionary(uniqueKeysWithValues: zip(ids, elements))
         if changedData || changedLayout {
             invalidateSizing()
         }
@@ -149,7 +148,9 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             var snapshot = NSDiffableDataSourceSnapshot<Int, ID>()
             snapshot.appendSections([0])
             snapshot.appendItems(ids)
+            updating = true
             dataSource.apply(snapshot, animatingDifferences: false)
+            updating = false
             reachedEdges.removeAll()
         } else {
             refreshVisibleItems()
@@ -158,9 +159,17 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         scheduleScrollUpdate()
     }
 
+    private func element(at position: Int, id: ID) -> Element? {
+        if !updating, (0 ..< ids.count).contains(position) {
+            return dataIndex.element(in: configuration.data, at: position)
+        }
+        guard let sourceIndex = indicesByID[id] else { return nil }
+        return configuration.data[sourceIndex]
+    }
+
     private func refreshVisibleItems() {
         for path in collectionView.indexPathsForVisibleItems() {
-            guard let id = dataSource.itemIdentifier(for: path), let element = elementsByID[id],
+            guard let id = dataSource.itemIdentifier(for: path), let element = element(at: path.item, id: id),
                   let item = collectionView.item(at: path) as? HostingCollectionViewItem else { continue }
             item.configure(configuration.viewProvider(element, location(at: path.item)), id: AnyHashable(id))
         }
@@ -182,8 +191,9 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         let resolvedWidth = configuration.layout.itemWidth(for: width)
         let columns = resolvedWidth.columns
         let itemWidth = resolvedWidth.width
-        guard let element = elements.first, itemWidth > 0 else { return (columns, CGSize(width: itemWidth, height: 0)) }
-        let size = itemSizeCache.size(width: itemWidth) {
+        guard !ids.isEmpty, itemWidth > 0 else { return (columns, CGSize(width: itemWidth, height: 0)) }
+        let element = dataIndex.element(in: configuration.data, at: 0)
+        let size = itemSizeCache.size(width: itemWidth, sizing: configuration.layout.itemSizing) {
             measuredContentSize(configuration.viewProvider(element, .init(column: -1, row: -1)), width: itemWidth)
         }
         return (columns, size)
