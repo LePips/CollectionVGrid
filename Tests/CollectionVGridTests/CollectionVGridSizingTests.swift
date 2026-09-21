@@ -84,6 +84,34 @@ struct CollectionVGridSizingTests {
         #expect(abs(grid.computeItemSize(forWidth: 810).itemSize.height - 600) <= 0.001)
     }
 
+    @Test(arguments: [320.0, 375, 390, 393, 402, 414, 430, 440, 744, 768, 810, 834, 1024, 1366, 375.25, 375.5, 375.75])
+    func threePortraitColumnsStayOnTheSameRow(width: CGFloat) throws {
+        let grid = UICollectionVGrid(
+            id: \Int.self,
+            data: Array(0 ..< 9),
+            layout: .columns(3),
+            onReachedBottomEdge: {},
+            onReachedBottomEdgeOffset: .rows(0),
+            onReachedTopEdge: {},
+            onReachedTopEdgeOffset: .rows(0),
+            proxy: nil,
+            viewProvider: { _, _ in MutableAspectRatioItem(aspectRatio: 0.66) }
+        )
+        grid.update(data: Array(0 ..< 9), layout: .columns(3), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
+        grid.bounds = CGRect(x: 0, y: 0, width: width, height: 1000)
+        grid.setNeedsLayout()
+        grid.layoutIfNeeded()
+        let collection = try #require(grid.subviews.compactMap { $0 as? UICollectionView }.first)
+        #expect(abs(collection.bounds.width - width) < 0.5)
+        #expect(collection.numberOfItems(inSection: 0) == 9)
+        let attributes = try (0 ..< 4).map { index in
+            try #require(collection.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: index, section: 0)))
+        }
+        #expect(attributes[2].frame.minY == attributes[0].frame.minY,
+                "Width \(width), frames: \(attributes.map(\.frame))")
+        #expect(attributes[3].frame.minY > attributes[2].frame.minY)
+    }
+
     @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
     func dataChangesAndDynamicTypeRemeasureContent(sizing: CollectionVGridLayout.ItemSizing) {
         let counter = MeasurementCounter()
@@ -191,7 +219,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func widthOnlyResizeUpdatesFlowLayoutAndResolvedItemWidth() throws {
+    func widthOnlyResizeUpdatesFlowLayoutAndResolvedItemWidth() async throws {
         let grid = makeGrid(counter: MeasurementCounter())
         let layout = CollectionVGridLayout.columns(
             2,
@@ -219,8 +247,11 @@ struct CollectionVGridSizingTests {
             sizeForItemAt: IndexPath(item: 0, section: 0)
         )
 
-        grid.bounds.size.width = 210.2
-        grid.layoutSubviews()
+        grid.bounds.size.width = 210 + 1 / max(collectionView.traitCollection.displayScale, 1)
+        grid.setNeedsLayout()
+        grid.layoutIfNeeded()
+        // UIKit can defer attribute invalidation until the geometry transaction ends.
+        try await Task.sleep(for: .milliseconds(20))
 
         let resizedItemSize = grid.collectionView(
             collectionView,
@@ -230,14 +261,18 @@ struct CollectionVGridSizingTests {
 
         #expect(initialItemSize.width == 100)
         #expect(abs(initialItemSize.height - 50) <= 0.001)
-        #expect(abs(resizedItemSize.width - 100.1) <= 0.001)
-        #expect(abs(resizedItemSize.height - 50.05) <= 0.001)
+        let expectedWidth = (collectionView.bounds.width - 10) / 2
+        #expect(resizedItemSize.width > initialItemSize.width)
+        #expect(abs(resizedItemSize.width - expectedWidth) <= 0.001)
+        #expect(abs(resizedItemSize.height - expectedWidth / 2) <= 0.001)
         #expect(collectionView.flowLayout.itemSize == resizedItemSize)
-        #expect(try #require(
+        let attributes = try #require(
             collectionView.collectionViewLayout.layoutAttributesForItem(
                 at: IndexPath(item: 0, section: 0)
             )
-        ).size == resizedItemSize)
+        )
+        #expect(abs(attributes.size.width - resizedItemSize.width) <= 0.001)
+        #expect(abs(attributes.size.height - resizedItemSize.height) <= 0.001)
     }
 
     @Test

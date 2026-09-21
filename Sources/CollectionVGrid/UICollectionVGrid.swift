@@ -141,7 +141,9 @@ public class UICollectionVGrid<
     override public func layoutSubviews() {
         super.layoutSubviews()
 
-        updateItemSize(forWidth: bounds.width)
+        // Auto Layout can pixel-align the collection to a slightly different width.
+        // Use the outer width only until the collection has its initial bounds.
+        updateItemSize(forWidth: collectionView.bounds.width.positiveFinite(or: bounds.width))
 
         if let viewController = closestUIViewController() {
             viewController.setContentScrollView(collectionView)
@@ -369,7 +371,7 @@ public class UICollectionVGrid<
     ) -> CGSize {
 
         // A size delegate must not invalidate or force the layout that is calling it.
-        itemSize ?? computeItemSize(forWidth: bounds.width).itemSize
+        itemSize ?? computeItemSize(forWidth: collectionView.bounds.width.positiveFinite(or: bounds.width)).itemSize
     }
 
     // MARK: UIScrollViewDelegate
@@ -453,8 +455,12 @@ public class UICollectionVGrid<
         guard availableWidth.isFiniteAndPositive else { return (1, .zero) }
 
         let resolvedWidth = layout.itemWidth(for: availableWidth)
+        let width = resolvedWidth.width
+        // Flow layout subtracts each item and gap from the remaining row width.
+        // A fractional quotient can round up just enough to wrap the last column.
+        let fittingWidth = width.rounded(.down) == width ? width : width.nextDown
 
-        return (resolvedWidth.columns, measuredItemSize(width: resolvedWidth.width))
+        return (resolvedWidth.columns, measuredItemSize(width: fittingWidth))
     }
 
     private func updateItemSize(forWidth width: CGFloat) {
