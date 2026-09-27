@@ -107,8 +107,10 @@ struct CollectionVGridSizingTests {
         let attributes = try (0 ..< 4).map { index in
             try #require(collection.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: index, section: 0)))
         }
-        #expect(attributes[2].frame.minY == attributes[0].frame.minY,
-                "Width \(width), frames: \(attributes.map(\.frame))")
+        #expect(
+            attributes[2].frame.minY == attributes[0].frame.minY,
+            "Width \(width), frames: \(attributes.map(\.frame))"
+        )
         #expect(attributes[3].frame.minY > attributes[2].frame.minY)
     }
 

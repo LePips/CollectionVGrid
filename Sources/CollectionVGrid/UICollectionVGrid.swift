@@ -45,6 +45,7 @@ public class UICollectionVGrid<
     }
 
     private var data: Data
+    private var header: CollectionHeader?
     private var itemSizeCache = ItemSizeCache()
     private var itemSize: CGSize?
     private var lastLaidOutWidth: CGFloat?
@@ -119,6 +120,11 @@ public class UICollectionVGrid<
             HostingCollectionViewCell<Content>.self,
             forCellWithReuseIdentifier: cellReuseIdentifier
         )
+        collectionView.register(
+            HostingCollectionViewHeader.self,
+            forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
+            withReuseIdentifier: "header"
+        )
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.alwaysBounceVertical = true
@@ -144,6 +150,11 @@ public class UICollectionVGrid<
         // Auto Layout can pixel-align the collection to a slightly different width.
         // Use the outer width only until the collection has its initial bounds.
         updateItemSize(forWidth: collectionView.bounds.width.positiveFinite(or: bounds.width))
+        let headerSize = header?.size(forWidth: collectionView.bounds.width) ?? .zero
+        if collectionView.flowLayout.headerReferenceSize != headerSize {
+            collectionView.flowLayout.headerReferenceSize = headerSize
+            invalidateCollectionLayout()
+        }
 
         if let viewController = closestUIViewController() {
             viewController.setContentScrollView(collectionView)
@@ -151,6 +162,17 @@ public class UICollectionVGrid<
     }
 
     func configure(_ configuration: CollectionVGrid<Element, Data, ID, Content>) {
+        if let content = configuration.headerContent {
+            if let header {
+                header.update(content: content)
+            } else {
+                header = CollectionHeader(content: content)
+            }
+        } else {
+            header?.detach()
+            header = nil
+        }
+        setNeedsLayout()
         #if os(iOS)
         configureRefresh(action: configuration.refreshAction)
         #endif
@@ -352,6 +374,20 @@ public class UICollectionVGrid<
         return cell
     }
 
+    public func collectionView(
+        _ collectionView: UICollectionView,
+        viewForSupplementaryElementOfKind kind: String,
+        at indexPath: IndexPath
+    ) -> UICollectionReusableView {
+        let view = collectionView.dequeueReusableSupplementaryView(
+            ofKind: kind,
+            withReuseIdentifier: "header",
+            for: indexPath
+        )
+        header?.attach(to: view)
+        return view
+    }
+
     // MARK: UICollectionViewDelegate
 
     /// required for tvOS
@@ -506,6 +542,7 @@ public class UICollectionVGrid<
     }
 
     private func invalidateSizing() {
+        header?.invalidateSize()
         needsSizingUpdate = true
         lastLaidOutWidth = nil
         itemSize = nil

@@ -11,6 +11,7 @@ Data.Index == Int {
     let _id: KeyPath<Element, ID>
     let data: Data
     let layout: CollectionVGridLayout
+    var headerContent: AnyView?
     var refreshAction: (@MainActor () async -> Void)?
     var onReachedBottomEdge: () -> Void
     var onReachedBottomEdgeOffset: CollectionVGridEdgeOffset
@@ -56,9 +57,7 @@ extension CollectionVGrid: UIViewRepresentable {
             proxy: proxy,
             viewProvider: viewProvider
         )
-        #if os(iOS)
-        view.configureRefresh(action: refreshAction)
-        #endif
+        view.configure(self)
         return view
     }
 

@@ -2,6 +2,10 @@ import SwiftUI
 
 public extension CollectionVGrid {
 
+    func header(@ViewBuilder _ content: () -> some View) -> Self {
+        copy(modifying: \.headerContent, to: AnyView(content()))
+    }
+
     /// Enables pull-to-refresh on iOS, keeping the indicator visible until the action returns.
     /// Pass `nil` to disable refresh and cancel any running action. Actions should cooperate
     /// with task cancellation. macOS and tvOS do not display a pull-to-refresh control.

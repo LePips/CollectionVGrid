@@ -67,6 +67,7 @@ final class CollectionLayout: NSCollectionViewLayout {
     var horizontal = false
     var lanes = 1
     var itemSize = CGSize.zero
+    var headerHeight: CGFloat = 0
     var insets = NSEdgeInsetsZero
     var itemSpacing: CGFloat = 0
     var lineSpacing: CGFloat = 0
@@ -109,7 +110,7 @@ final class CollectionLayout: NSCollectionViewLayout {
                 ?? (insets.left + CGFloat(groups) * (itemSize.width + itemSpacing) - (groups > 0 ? itemSpacing : 0) + insets.right)
             return CGSize(width: max(viewport.width, width), height: viewport.height)
         }
-        let height = insets.top + CGFloat(groups) * (itemSize.height + lineSpacing)
+        let height = headerHeight + insets.top + CGFloat(groups) * (itemSize.height + lineSpacing)
             - (groups > 0 ? lineSpacing : 0) + insets.bottom
         return CGSize(width: viewport.width, height: max(viewport.height, height))
     }
@@ -127,17 +128,24 @@ final class CollectionLayout: NSCollectionViewLayout {
             y = insets.top + CGFloat(lane) * (itemSize.height + lineSpacing)
         } else {
             x = insets.left + CGFloat(lane) * (itemSize.width + itemSpacing)
-            y = insets.top + CGFloat(group) * (itemSize.height + lineSpacing)
+            y = headerHeight + insets.top + CGFloat(group) * (itemSize.height + lineSpacing)
         }
         attributes.frame = CGRect(origin: CGPoint(x: x, y: y), size: size)
         return attributes
     }
 
     override func layoutAttributesForElements(in rect: NSRect) -> [NSCollectionViewLayoutAttributes] {
-        guard groups > 0 else { return [] }
+        var attributes: [NSCollectionViewLayoutAttributes] = []
+        if let header = layoutAttributesForSupplementaryView(
+            ofKind: NSCollectionView.elementKindSectionHeader,
+            at: IndexPath(item: 0, section: 0)
+        ), header.frame.intersects(rect) {
+            attributes.append(header)
+        }
+        guard groups > 0 else { return attributes }
         let lower = horizontal ? rect.minX : rect.minY
         let upper = horizontal ? rect.maxX : rect.maxY
-        let inset = horizontal ? insets.left : insets.top
+        let inset = horizontal ? insets.left : headerHeight + insets.top
         let stride = max(1, horizontal ? itemSize.width + itemSpacing : itemSize.height + lineSpacing)
         let first: Int
         let last: Int
@@ -148,11 +156,23 @@ final class CollectionLayout: NSCollectionViewLayout {
             first = Int(floor((lower - inset) / stride).clamped(to: 0 ... CGFloat(groups - 1)))
             last = Int(floor((upper - inset) / stride).clamped(to: 0 ... CGFloat(groups - 1)))
         }
-        guard first <= last else { return [] }
-        return (first * lanes ..< min((last + 1) * lanes, count)).compactMap {
+        guard first <= last else { return attributes }
+        attributes += (first * lanes ..< min((last + 1) * lanes, count)).compactMap {
             let attributes = layoutAttributesForItem(at: IndexPath(item: $0, section: 0))
             return attributes?.frame.intersects(rect) == true ? attributes : nil
         }
+        return attributes
+    }
+
+    override func layoutAttributesForSupplementaryView(
+        ofKind elementKind: NSCollectionView.SupplementaryElementKind,
+        at indexPath: IndexPath
+    ) -> NSCollectionViewLayoutAttributes? {
+        guard !horizontal, headerHeight > 0, elementKind == NSCollectionView.elementKindSectionHeader,
+              indexPath == IndexPath(item: 0, section: 0) else { return nil }
+        let attributes = NSCollectionViewLayoutAttributes(forSupplementaryViewOfKind: elementKind, with: indexPath)
+        attributes.frame = CGRect(x: 0, y: 0, width: collectionViewContentSize.width, height: headerHeight)
+        return attributes
     }
 
     private func columnIndex(at x: CGFloat) -> Int {

@@ -44,6 +44,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     }
 
     private var updating = false
+    private var header: CollectionHeader?
     private var itemSizeCache = ItemSizeCache()
     private var appliedWidth: CGFloat?
     private var dynamicTypeSize: DynamicTypeSize?
@@ -58,6 +59,11 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         collectionView.backgroundColors = [.clear]
         collectionView.isSelectable = false
         collectionView.register(HostingCollectionViewItem.self, forItemWithIdentifier: .init("content"))
+        collectionView.register(
+            HostingCollectionViewHeader.self,
+            forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
+            withIdentifier: .init("header")
+        )
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
@@ -78,6 +84,13 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             let item = collection.makeItem(withIdentifier: .init("content"), for: path) as! HostingCollectionViewItem
             item.configure(self.configuration.viewProvider(element, self.location(at: path.item)), id: AnyHashable(id))
             return item
+        }
+        dataSource.supplementaryViewProvider = { [weak self] collection, kind, path in
+            guard let header = self?.header else { return nil }
+            let view = collection.makeSupplementaryView(ofKind: kind, withIdentifier: .init("header"), for: path)
+                as! HostingCollectionViewHeader
+            header.attach(to: view)
+            return view
         }
         scrollView.contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(
@@ -100,7 +113,8 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         super.layout()
         let width = scrollView.contentSize.width
         guard width.isFiniteAndPositive else { return }
-        if appliedWidth == width {
+        let headerHeight = header?.size(forWidth: width).height ?? 0
+        if appliedWidth == width, collectionLayout.headerHeight == headerHeight {
             let contentSize = collectionLayout.collectionViewContentSize
             if collectionView.frame.size != contentSize {
                 collectionView.setFrameSize(contentSize)
@@ -114,6 +128,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         collectionLayout.insets = configuration.layout.insets.appKitInsets
         collectionLayout.itemSpacing = nonnegativeFinite(configuration.layout.itemSpacing)
         collectionLayout.lineSpacing = nonnegativeFinite(configuration.layout.lineSpacing)
+        collectionLayout.headerHeight = headerHeight
         collectionLayout.invalidateLayout()
         collectionView.setFrameSize(collectionLayout.collectionViewContentSize)
         appliedWidth = width
@@ -136,6 +151,16 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         let changedData = dataIndex.update(from: new.data, id: new._id, prefix: nil, retainingLookup: &indicesByID)
         updating = changedData
         configuration = new
+        if let content = new.headerContent {
+            if let header {
+                header.update(content: content)
+            } else {
+                header = CollectionHeader(content: content)
+            }
+        } else {
+            header?.detach()
+            header = nil
+        }
         self.dynamicTypeSize = dynamicTypeSize
         new.proxy?.collectionVGrid = self
         scrollView.allowsScrolling = isScrollEnabled
@@ -144,7 +169,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         if changedData || changedLayout {
             invalidateSizing()
         }
-        if changedData {
+        if changedData || collectionView.numberOfSections == 0 {
             var snapshot = NSDiffableDataSourceSnapshot<Int, ID>()
             snapshot.appendSections([0])
             snapshot.appendItems(ids)
@@ -181,6 +206,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     }
 
     private func invalidateSizing() {
+        header?.invalidateSize()
         itemSizeCache = ItemSizeCache()
         appliedWidth = nil
         needsLayout = true
