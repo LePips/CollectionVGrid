@@ -46,8 +46,9 @@ public class UICollectionVGrid<
 
     private var data: Data
     private var header: CollectionHeader?
-    private var itemSizeCache = ItemSizeCache()
+    private var itemMeasurementRevision = 0
     private var itemSize: CGSize?
+    private var itemSizeCache = ItemSizeCache()
     private var lastLaidOutWidth: CGFloat?
     private var layout: CollectionVGridLayout
     private var layoutInvalidationGeneration = 0
@@ -257,11 +258,14 @@ public class UICollectionVGrid<
         layout newLayout: CollectionVGridLayout,
         isScrollEnabled: Bool,
         verticalScrollIndicatorVisibility: ScrollIndicatorVisibility,
+        itemMeasurementRevision: Int = 0,
         viewProvider: ((Element, CollectionVGridLocation) -> Content)? = nil
     ) {
 
         let wasEmpty = data.isEmpty
         let layoutChanged = newLayout != layout
+        let measurementChanged = self.itemMeasurementRevision != itemMeasurementRevision
+        self.itemMeasurementRevision = itemMeasurementRevision
 
         if let viewProvider {
             self.viewProvider = viewProvider
@@ -305,7 +309,7 @@ public class UICollectionVGrid<
             // TODO: - figure out cell size animation if desired
 
             snapshotReload()
-        } else if hasDataChanges || wasEmpty != newData.isEmpty {
+        } else if hasDataChanges || wasEmpty != newData.isEmpty || measurementChanged {
             invalidateSizing()
         }
 

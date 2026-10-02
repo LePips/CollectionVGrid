@@ -1,6 +1,16 @@
+import Combine
 import SwiftUI
 
 public extension CollectionVGrid {
+
+    /// Remeasures items when the publisher emits, updating the cached aspect ratio or height.
+    ///
+    /// Apply after collection-specific modifiers.
+    func remeasureItems<Trigger: Publisher>(on publisher: Trigger) -> some View where Trigger.Failure == Never {
+        ItemRemeasurementView(publisher: publisher) { revision in
+            copy(modifying: \.itemMeasurementRevision, to: revision)
+        }
+    }
 
     #if canImport(UIKit)
     /// Controls UIKit's automatic safe-area adjustment of the grid's scroll insets.

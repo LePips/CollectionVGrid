@@ -1,13 +1,25 @@
 import SwiftUI
 
 struct LayoutMenu: View {
-    @Binding var orientation: LayoutOrientation
-    @Binding var layout: LayoutType
-    @Binding var columns: Int
-    @Binding var itemCount: Int
+
+    @Binding
+    var orientation: LayoutOrientation
+
+    @Binding
+    var layout: LayoutType
+
+    @Binding
+    var columns: Int
+
+    @Binding
+    var itemCount: Int
+
+    @Binding
+    var showsTitles: Bool
 
     var body: some View {
         Menu("Layout", systemImage: "slider.horizontal.3") {
+            Toggle("Show titles", isOn: $showsTitles)
             Picker("Layout", selection: $layout) {
                 Text("Adaptive").tag(LayoutType.adaptive)
                 Text("Columns").tag(LayoutType.grid)

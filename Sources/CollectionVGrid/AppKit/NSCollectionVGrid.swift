@@ -145,6 +145,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         dynamicTypeSize: DynamicTypeSize
     ) {
         let changedLayout = configuration.layout != new.layout || self.dynamicTypeSize != dynamicTypeSize
+        let changedMeasurement = configuration.itemMeasurementRevision != new.itemMeasurementRevision
         if configuration.proxy !== new.proxy, configuration.proxy?.collectionVGrid === self {
             configuration.proxy?.collectionVGrid = nil
         }
@@ -166,7 +167,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         scrollView.allowsScrolling = isScrollEnabled
         scrollView.hasVerticalScroller = isScrollEnabled && indicatorVisibility != .hidden
         scrollView.verticalScroller?.isEnabled = isScrollEnabled
-        if changedData || changedLayout {
+        if changedData || changedLayout || changedMeasurement {
             invalidateSizing()
         }
         if changedData || collectionView.numberOfSections == 0 {

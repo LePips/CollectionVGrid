@@ -15,6 +15,7 @@ Data.Index == Int {
     var contentInsetAdjustmentBehavior: UIScrollView.ContentInsetAdjustmentBehavior = .automatic
     #endif
     var headerContent: AnyView?
+    var itemMeasurementRevision = 0
     var refreshAction: (@MainActor () async -> Void)?
     var onReachedBottomEdge: () -> Void
     var onReachedBottomEdgeOffset: CollectionVGridEdgeOffset
@@ -71,6 +72,7 @@ extension CollectionVGrid: UIViewRepresentable {
             layout: layout,
             isScrollEnabled: context.environment.isScrollEnabled,
             verticalScrollIndicatorVisibility: context.environment.verticalScrollIndicatorVisibility,
+            itemMeasurementRevision: itemMeasurementRevision,
             viewProvider: viewProvider
         )
     }

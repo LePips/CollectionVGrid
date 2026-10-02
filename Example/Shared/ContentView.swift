@@ -1,13 +1,32 @@
 import CollectionVGrid
+import Combine
 import SwiftUI
 
 struct ContentView: View {
-    @State private var layout = LayoutType.adaptive
-    @State private var orientation = LayoutOrientation.landscape
-    @State private var columns = 4
-    @State private var itemCount = 1000
-    @State private var colorOffset = 0
-    @StateObject private var proxy = CollectionVGridProxy()
+
+    @State
+    private var layout = LayoutType.adaptive
+
+    @State
+    private var orientation = LayoutOrientation.landscape
+
+    @State
+    private var columns = 4
+
+    @State
+    private var itemCount = 1000
+
+    @State
+    private var colorOffset = 0
+
+    @State
+    private var showsTitles = false
+
+    @State
+    private var itemSizeChanges = PassthroughSubject<Void, Never>()
+
+    @StateObject
+    private var proxy = CollectionVGridProxy()
 
     private var gridLayout: CollectionVGridLayout {
         switch layout {
@@ -23,11 +42,17 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             CollectionVGrid(count: itemCount, layout: gridLayout) { index in
-                Group {
+                VStack(alignment: .leading, spacing: 8) {
                     if layout == .list {
                         ListRow(color: colorWheel(radius: index + colorOffset), orientation: orientation)
                     } else {
                         GridItem(color: colorWheel(radius: index + colorOffset), orientation: orientation)
+                    }
+
+                    if showsTitles {
+                        Text("Item \(index + 1)")
+                            .font(.caption)
+                            .lineLimit(1)
                     }
                 }
                 .exampleFocusable()
@@ -42,6 +67,9 @@ struct ContentView: View {
                     // Leave the colors unchanged if the refresh is cancelled.
                 }
             }
+            #endif
+            .remeasureItems(on: itemSizeChanges)
+            #if os(iOS)
             .ignoresSafeArea()
             #endif
             .navigationTitle("CollectionVGrid")
@@ -53,7 +81,13 @@ struct ContentView: View {
                     Button("Scroll to top", systemImage: "arrow.up.to.line") {
                         proxy.scrollToTop()
                     }
-                    LayoutMenu(orientation: $orientation, layout: $layout, columns: $columns, itemCount: $itemCount)
+                    LayoutMenu(
+                        orientation: $orientation,
+                        layout: $layout,
+                        columns: $columns,
+                        itemCount: $itemCount,
+                        showsTitles: $showsTitles
+                    )
                     NavigationLink {
                         InfiniteGridView()
                     } label: {
@@ -62,8 +96,15 @@ struct ContentView: View {
                 }
             }
         }
-        .onChange(of: orientation) { proxy.redraw() }
-        .onChange(of: layout) { proxy.redraw() }
+        .onChange(of: orientation) {
+            itemSizeChanges.send()
+        }
+        .onChange(of: layout) {
+            itemSizeChanges.send()
+        }
+        .onChange(of: showsTitles) {
+            itemSizeChanges.send()
+        }
     }
 }
 
