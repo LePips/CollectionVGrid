@@ -11,6 +11,9 @@ Data.Index == Int {
     let _id: KeyPath<Element, ID>
     let data: Data
     let layout: CollectionVGridLayout
+    #if canImport(UIKit)
+    var contentInsetAdjustmentBehavior: UIScrollView.ContentInsetAdjustmentBehavior = .automatic
+    #endif
     var headerContent: AnyView?
     var refreshAction: (@MainActor () async -> Void)?
     var onReachedBottomEdge: () -> Void

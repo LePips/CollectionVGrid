@@ -162,6 +162,9 @@ public class UICollectionVGrid<
     }
 
     func configure(_ configuration: CollectionVGrid<Element, Data, ID, Content>) {
+        if collectionView.contentInsetAdjustmentBehavior != configuration.contentInsetAdjustmentBehavior {
+            collectionView.contentInsetAdjustmentBehavior = configuration.contentInsetAdjustmentBehavior
+        }
         if let content = configuration.headerContent {
             if let header {
                 header.update(content: content)
@@ -561,6 +564,7 @@ public class UICollectionVGrid<
                 viewProvider(data[data.startIndex], .init(column: -1, row: -1)).frame(width: width)
             }
             let controller = UIHostingController(rootView: root)
+            controller.safeAreaRegions.remove(.container)
             _ = controller.sizeThatFits(in: .zero)
             return measurement.size
         }

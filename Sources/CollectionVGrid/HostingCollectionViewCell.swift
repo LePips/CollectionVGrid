@@ -13,6 +13,8 @@ final class HostingCollectionViewCell<Content: View>: UICollectionViewCell {
             return
         }
         let controller = UIHostingController(rootView: root)
+        // Cell bounds already include the collection's layout and scroll insets.
+        controller.safeAreaRegions.remove(.container)
         controller.view.backgroundColor = nil
         controller.view.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(controller.view)

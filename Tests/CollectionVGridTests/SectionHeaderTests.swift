@@ -122,6 +122,22 @@ struct SectionHeaderTests {
         #expect(try harness.headerFrame().height == 140)
         #expect(try harness.itemFrame().minY == 150)
 
+        harness.apply(configuration(count: 10000).header(isVisible: false) {
+            Color.red.frame(height: 140)
+        })
+        try await harness.layout()
+        #expect(!harness.headerIsVisible)
+        #expect(try harness.itemFrame().minY == 10)
+        #expect(harness.itemCount == 10000)
+
+        harness.apply(configuration(count: 10000).header(isVisible: true) {
+            Color.red.frame(height: 140)
+        })
+        try await harness.layout()
+        #expect(harness.headerIsVisible)
+        #expect(try harness.headerFrame().height == 140)
+        #expect(try harness.itemFrame().minY == 150)
+
         harness.apply(configuration(count: 10000).header {
             Color.blue.aspectRatio(2, contentMode: .fit)
         })
@@ -143,10 +159,16 @@ struct SectionHeaderTests {
 
     @Test
     func emptyGridCanDisplayAddAndRemoveAHeader() async throws {
-        let harness = GridHarness(configuration(count: 0, headerHeight: 80))
+        let harness = GridHarness(configuration(count: 0).header(isVisible: false) {
+            Color.red.frame(height: 80)
+        })
         defer { harness.close() }
         try await harness.layout()
         #expect(harness.itemCount == 0)
+        #expect(!harness.headerIsVisible)
+
+        harness.apply(configuration(count: 0, headerHeight: 80))
+        try await harness.layout()
         #expect(harness.headerIsVisible)
         #expect(try harness.headerFrame().height == 80)
         harness.apply(configuration(count: 0))

@@ -2,8 +2,17 @@ import SwiftUI
 
 public extension CollectionVGrid {
 
-    func header(@ViewBuilder _ content: () -> some View) -> Self {
-        copy(modifying: \.headerContent, to: AnyView(content()))
+    #if canImport(UIKit)
+    /// Controls UIKit's automatic safe-area adjustment of the grid's scroll insets.
+    /// Use `.never` when the supplied layout and header already account for safe areas.
+    func contentInsetAdjustmentBehavior(_ behavior: UIScrollView.ContentInsetAdjustmentBehavior) -> Self {
+        copy(modifying: \.contentInsetAdjustmentBehavior, to: behavior)
+    }
+    #endif
+
+    /// Adds a scrolling header. Hidden headers occupy no layout space.
+    func header(isVisible: Bool = true, @ViewBuilder _ content: () -> some View) -> Self {
+        copy(modifying: \.headerContent, to: isVisible ? AnyView(content()) : nil)
     }
 
     /// Enables pull-to-refresh on iOS, keeping the indicator visible until the action returns.

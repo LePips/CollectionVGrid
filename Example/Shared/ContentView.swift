@@ -42,10 +42,11 @@ struct ContentView: View {
                     // Leave the colors unchanged if the refresh is cancelled.
                 }
             }
+            .ignoresSafeArea()
             #endif
             .navigationTitle("CollectionVGrid")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItemGroup {
