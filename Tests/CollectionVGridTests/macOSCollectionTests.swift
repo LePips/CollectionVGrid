@@ -8,7 +8,7 @@ import Testing
 @MainActor
 struct MacOSCollectionVGridTests {
     @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
-    func measurementsAreCachedAndRedrawRemeasures(sizing: CollectionVGridLayout.ItemSizing) {
+    func `measurements are cached and redraw remeasures`(sizing: CollectionVGridLayout.ItemSizing) {
         let proxy = CollectionVGridProxy()
         let model = SizeModel()
         let configuration = CollectionVGrid(count: 10000, layout: .columns(2, insets: .init(), itemSpacing: 10, itemSizing: sizing)) { _ in
@@ -26,7 +26,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
-    func nativeGridRemainsVirtualizedAcrossResizesAndDistantScroll(sizing: CollectionVGridLayout.ItemSizing) async throws {
+    func `native grid remains virtualized across resizes and distant scroll`(sizing: CollectionVGridLayout.ItemSizing) async throws {
         _ = NSApplication.shared
         let configuration = CollectionVGrid(
             count: 10000,
@@ -66,7 +66,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func minimumWidthsAndLocationsAdaptWhileResizing() async throws {
+    func `minimum widths and locations adapt while resizing`() async throws {
         _ = NSApplication.shared
         var locations: [Int: CollectionVGridLocation] = [:]
         let configuration = CollectionVGrid(
@@ -99,7 +99,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func changingSizingUpdatesLayoutAtTheSameWidth() throws {
+    func `changing sizing updates layout at the same width`() throws {
         let model = SizeModel()
         func configuration(_ sizing: CollectionVGridLayout.ItemSizing) -> CollectionVGrid<Int, [Int], Int, some View> {
             CollectionVGrid(count: 10, layout: .columns(1, insets: .init(), itemSizing: sizing)) { _ in
@@ -132,7 +132,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func collidingIdentitiesSlicesAndUpdatesAreSafe() {
+    func `colliding identities slices and updates are safe`() {
         let data = (0 ..< 10).map(CollidingID.init)
         func configuration(_ values: ArraySlice<CollidingID>) -> CollectionVGrid<CollidingID, ArraySlice<CollidingID>, CollidingID, Text> {
             CollectionVGrid(uniqueElements: values, id: \.self, layout: .columns(2)) { Text("\($0.value)") }
@@ -155,13 +155,15 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func edgeCallbacksAndProxyReflectCurrentConfiguration() async throws {
+    func `edge callbacks and proxy reflect current configuration`() async throws {
         _ = NSApplication.shared
         let proxy = CollectionVGridProxy()
         var top = 0
         var bottom = 0
         let configuration = CollectionVGrid(count: 100, layout: .columns(2)) { _ in Color.blue.frame(height: 50) }
-            .proxy(proxy).onReachedTopEdge { top += 1 }.onReachedBottomEdge(offset: .rows(1)) { bottom += 1 }
+            .proxy(proxy)
+            .onReachedTopEdge { top += 1 }
+            .onReachedBottomEdge(offset: .rows(1)) { bottom += 1 }
         let view = NSCollectionVGrid(configuration: configuration)
         let window = makeWindow(view)
         defer { view.disconnect()
@@ -185,7 +187,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func swiftUIRepresentableBuildsAndHosts() async throws {
+    func `swift UI representable builds and hosts`() async throws {
         _ = NSApplication.shared
         let host = NSHostingController(rootView: CollectionVGrid(count: 100, layout: .columns(2)) { Text("Item \($0)").frame(height: 50) })
         let window = makeWindow(host.view)
@@ -198,7 +200,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func invalidInputsRemainFiniteAndHostingViewsAreReused() {
+    func `invalid inputs remain finite and hosting views are reused`() {
         for layout: CollectionVGridLayout in [.columns(0), .minWidth(.nan), .minWidth(-20)] {
             let view = NSCollectionVGrid(configuration: CollectionVGrid(count: 1, layout: layout) { _ in Color.blue.frame(height: 50) })
             let size = view.computeItemSize(forWidth: 300)
@@ -217,7 +219,7 @@ struct MacOSCollectionVGridTests {
     }
 
     @Test
-    func visibleLayoutAttributesAreIndependentOfTotalItemCount() {
+    func `visible layout attributes are independent of total item count`() {
         var expectedAttributes: Int?
         for count in [100, 10000, 100_000] {
             let view = NSCollectionVGrid(configuration: CollectionVGrid(count: count, layout: .columns(3)) { _ in

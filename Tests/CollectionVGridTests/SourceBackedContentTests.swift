@@ -12,7 +12,7 @@ private struct StorageValue {
 @MainActor
 struct UIKitSourceBackedContentTests {
     @Test
-    func gridRefreshesSameIDsAfterSliceBoundsAndContentChange() throws {
+    func `grid refreshes same I ds after slice bounds and content change`() throws {
         let original = (0 ..< 8).map { StorageValue(id: $0, content: "old") }
         var seen: [StorageValue] = []
         let view = UICollectionVGrid(
@@ -39,7 +39,7 @@ struct UIKitSourceBackedContentTests {
 
     #if os(iOS)
     @Test
-    func listRefreshesSameIDsAndHandlesReorderAndRemoval() throws {
+    func `list refreshes same I ds and handles reorder and removal`() throws {
         let original = (0 ..< 8).map { StorageValue(id: $0, content: "old") }
         var seen: [StorageValue] = []
         var rows: [Int: Int] = [:]
@@ -102,7 +102,7 @@ import AppKit
 @MainActor
 struct AppKitSourceBackedContentTests {
     @Test
-    func snapshotAndVisibleCellsUseLatestSourceAfterSliceBoundsChange() {
+    func `snapshot and visible cells use latest source after slice bounds change`() {
         _ = NSApplication.shared
         let original = (0 ..< 8).map { StorageValue(id: $0, content: "old") }
         var seen: [StorageValue] = []

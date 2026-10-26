@@ -24,6 +24,7 @@ struct ItemSizeCache {
             guard value.isFiniteAndPositive else {
                 return CGSize(width: width, height: nonnegativeFinite(measured.height))
             }
+
             cachedValue = (sizing, value)
         }
 

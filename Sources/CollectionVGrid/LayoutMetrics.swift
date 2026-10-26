@@ -4,6 +4,7 @@ extension CollectionVGridLayout {
     /// Resolve columns and width without depending on a native collection layout.
     func itemWidth(for availableWidth: CGFloat) -> (width: CGFloat, columns: Int) {
         guard availableWidth.isFiniteAndPositive else { return (0, 1) }
+
         let spacing = nonnegativeFinite(itemSpacing)
         let contentWidth = nonnegativeFinite(availableWidth - insets.leading - insets.trailing)
         let value = layoutValue.positiveFinite(or: 1)

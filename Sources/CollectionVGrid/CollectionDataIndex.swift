@@ -2,13 +2,17 @@
 /// only their start index; unusual Int-indexed collections retain their indices.
 @usableFromInline
 struct CollectionDataIndex<ID: Hashable> {
-    @usableFromInline var storedIDs: [ID] = []
-    @inlinable var ids: [ID] {
+    @usableFromInline
+    var storedIDs: [ID] = []
+    @inlinable
+    var ids: [ID] {
         storedIDs
     }
 
-    @usableFromInline var startIndex = 0
-    @usableFromInline var explicitIndices: [Int] = []
+    @usableFromInline
+    var startIndex = 0
+    @usableFromInline
+    var explicitIndices: [Int] = []
 
     /// The caller supplies an offset in the unrepeated, prefixed source.
     @inlinable @inline(__always)

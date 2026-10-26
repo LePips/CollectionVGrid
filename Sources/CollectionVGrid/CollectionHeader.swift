@@ -34,6 +34,7 @@ final class CollectionHeader {
 
     func size(forWidth width: CGFloat) -> CGSize {
         guard width.isFiniteAndPositive else { return .zero }
+
         if let cachedSize, cachedSize.width == width {
             return cachedSize
         }
@@ -50,6 +51,7 @@ final class CollectionHeader {
         let content = controller.view
         #endif
         guard content.superview !== view else { return }
+
         content.removeFromSuperview()
         view.addSubview(content)
         NSLayoutConstraint.activate([

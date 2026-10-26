@@ -20,7 +20,7 @@ private typealias PlatformView = UIView
 struct ItemRemeasurementTests {
 
     @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
-    func publisherRemeasuresLatestContentAndDerivedSizing(sizing: CollectionVGridLayout.ItemSizing) async throws {
+    func `publisher remeasures latest content and derived sizing`(sizing: CollectionVGridLayout.ItemSizing) async throws {
         let model = RemeasurementModel()
         let hosted = RemeasurementHost(model: model, sizing: sizing)
         defer {
@@ -69,7 +69,7 @@ struct ItemRemeasurementTests {
     }
 
     @Test
-    func publisherReplacementAndRemovalFollowViewLifetime() async throws {
+    func `publisher replacement and removal follow view lifetime`() async throws {
         let model = RemeasurementModel()
         let hosted = RemeasurementHost(model: model, sizing: .height)
         defer {
@@ -106,7 +106,8 @@ struct ItemRemeasurementTests {
         if let grid = view as? NativeGrid {
             return grid
         }
-        return view.subviews.lazy
+        return view.subviews
+            .lazy
             .compactMap(findGrid)
             .first
     }

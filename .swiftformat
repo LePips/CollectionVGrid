@@ -1,47 +1,57 @@
-# version: 0.52.10
+--swiftversion 6.4
 
---swiftversion 5.9
-
---header strip
-
---tabwidth 4
---xcodeindentation enabled
---semicolons never
---stripunusedargs closure-only
---maxwidth 140
 --assetliterals visual-width
+--computedvarattrs prev-line
+--funcattributes prev-line
+--ifdef no-indent 
+--maxwidth 140
+--semicolons never
+--shortoptionals "always"
+--storedvarattrs prev-line
+--stripunusedargs closure-only
+--tabwidth 4
+--trailingclosures
+--typeattributes prev-line
 --wraparguments before-first
---wrapparameters before-first
 --wrapcollections before-first
 --wrapconditions after-first
---funcattributes prev-line
---typeattributes prev-line
---varattributes prev-line
---trailingclosures
---shortoptionals "always"
---ifdef no-indent 
+--wrapparameters before-first
+--xcodeindentation enabled
 
---enable isEmpty,           \
-    leadingDelimiters,      \
-    wrapEnumCases,          \
-    typeSugar,              \
-    void,                   \
-    trailingSpace,          \
-    spaceInsideParens,      \
-    spaceInsideGenerics,    \
-    spaceInsideComments,    \
-    spaceInsideBrackets,    \
-    spaceInsideBraces,      \
-    blankLinesAroundMark,   \
-    redundantLet,           \
-    redundantInit,          \
-    blankLinesAroundMark
+--enable blankLineAfterSwitchCase,     \
+    blankLinesAfterGuardStatements,    \
+    blankLinesAroundMark,              \
+    isEmpty,                            \
+    leadingDelimiters,                  \
+    preferContains,                     \
+    preferCountWhere,                   \
+    preferFirstWhere,                   \
+    preferFlatMap,                      \
+    preferMinOverSorted,                \
+    preferSwiftStringAPI,               \
+    redundantInit,                      \
+    redundantLet,                       \
+    spaceInsideBraces,                  \
+    spaceInsideBrackets,                \
+    spaceInsideComments,                \
+    spaceInsideGenerics,                \
+    spaceInsideParens,                  \
+    trailingSpace,                      \
+    typeSugar,                          \
+    void,                               \
+    wrapEnumCases,                      \
+    wrapMultilineFunctionChains
 
---disable strongOutlets,    \
-    yodaConditions,         \
+--disable andOperator,       \
     blankLinesAtStartOfScope,\
-    andOperator,            \
+    docComments,             \
+    redundantClosure,       \
     redundantFileprivate,   \
     redundantSelf,          \
-    redundantClosure,       \
-    redundantType
+    redundantType,          \
+    redundantViewBuilder,   \
+    strongOutlets,          \
+    trailingCommas,         \
+    yodaConditions
+
+--header ignore

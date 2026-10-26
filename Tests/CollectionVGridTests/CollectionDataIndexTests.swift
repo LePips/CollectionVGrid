@@ -12,7 +12,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func unchangedIdentitiesReuseStorageAndResolveNewContent() throws {
+    func `unchanged identities reuse storage and resolve new content`() throws {
         var index = CollectionDataIndex<Int>()
         let first = [Value(id: 1, content: "old"), Value(id: 2, content: "old")]
         let inserted = index.update(from: first, id: \.id, prefix: nil)
@@ -31,7 +31,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func sameIDsAtDifferentSliceIndicesReuseIDsAndRefreshLookups() throws {
+    func `same I ds at different slice indices reuse I ds and refresh lookups`() throws {
         var index = CollectionDataIndex<Int>()
         let first = [0, 1, 2, 3, 4][2 ..< 5]
         let inserted = index.update(from: first, id: \.self, prefix: 2)
@@ -54,7 +54,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func reorderInsertionDeletionAndEmptyDataReplaceMetadata() {
+    func `reorder insertion deletion and empty data replace metadata`() {
         var index = CollectionDataIndex<Int>()
         let inserted = index.update(from: [1, 2, 3], id: \.self, prefix: nil)
         #expect(inserted)
@@ -74,7 +74,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func noncontiguousIndicesAndUnlimitedPrefixes() {
+    func `noncontiguous indices and unlimited prefixes`() {
         let data = SpacedCollection()
         for prefix: Int? in [nil, 0, -1, 100] {
             var index = CollectionDataIndex<Int>()
@@ -88,7 +88,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func extractsEveryIDOnceAndReadsByPositionWithoutExtractingIDs() {
+    func `extracts every ID once and reads by position without extracting IDs`() {
         final class Reads { var count = 0 }
         struct CountedCollection: Collection {
             let values: [Value]
@@ -127,7 +127,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func irregularIndicesRemainIndependentAcrossUpdates() {
+    func `irregular indices remain independent across updates`() {
         struct IrregularCollection: Collection {
             let positions: [Int]
             let values: [Int]
@@ -141,12 +141,14 @@ struct CollectionDataIndexTests {
 
             func index(after i: Int) -> Int {
                 guard let current = positions.firstIndex(of: i) else { preconditionFailure("Invalid source index") }
+
                 let offset = current + 1
                 return offset < positions.count ? positions[offset] : endIndex
             }
 
             subscript(index: Int) -> Int {
                 guard let offset = positions.firstIndex(of: index) else { preconditionFailure("Invalid source index") }
+
                 return values[offset]
             }
         }
@@ -174,7 +176,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func borrowedBuffersRespectSliceBoundsPrefixesAndPartialRepetitions() {
+    func `borrowed buffers respect slice bounds prefixes and partial repetitions`() {
         let values = (0 ..< 12).map { Value(id: $0, content: "value-\($0)") }
         let slice = values[3 ..< 10]
         var index = CollectionDataIndex<Int>()
@@ -191,7 +193,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func directReadsSupportNoncontiguousIndicesAndOptionalElements() {
+    func `direct reads support noncontiguous indices and optional elements`() {
         let data = SpacedCollection()
         var index = CollectionDataIndex<Int>()
         index.update(from: data, id: \.self, prefix: nil)
@@ -206,7 +208,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func transitionLookupUsesNewContentAndRetainsRemovedOffsets() throws {
+    func `transition lookup uses new content and retains removed offsets`() throws {
         var previous = CollectionDataIndex<Int>()
         previous.update(from: [1, 2, 3, 4][1...], id: \.self, prefix: nil)
         var current = CollectionDataIndex<Int>()
@@ -228,7 +230,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func identityLookupHandlesHashCollisions() {
+    func `identity lookup handles hash collisions`() {
         struct ID: Hashable {
             let value: Int
             func hash(into hasher: inout Hasher) {
@@ -246,7 +248,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func retainedLookupFollowsSourceIndicesAndContentWithoutRebuildingIDs() {
+    func `retained lookup follows source indices and content without rebuilding IDs`() {
         var index = CollectionDataIndex<Int>()
         var lookup: [Int: Int] = [:]
         let values = (0 ..< 5).map { Value(id: $0, content: "old") }
@@ -268,7 +270,7 @@ struct CollectionDataIndexTests {
     }
 
     @Test
-    func metadataDoesNotRetainElements() {
+    func `metadata does not retain elements`() {
         final class Element {
             let id = 1
         }

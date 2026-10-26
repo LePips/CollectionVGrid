@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct SectionHeaderTests {
     @Test
-    func parentStateReadOnlyByTheHeaderUpdatesItsLayout() async throws {
+    func `parent state read only by the header updates its layout`() async throws {
         let model = HeaderModel()
         let root = HeaderUpdateFixture(model: model)
         #if canImport(UIKit)
@@ -59,7 +59,7 @@ struct SectionHeaderTests {
     }
 
     @Test
-    func measurementIsCachedAndTheHostSurvivesReuse() throws {
+    func `measurement is cached and the host survives reuse`() throws {
         let counter = HeaderMeasurements()
         let header = CollectionHeader(content: AnyView(HeaderLayout(counter: counter) { Color.blue }))
         #expect(header.size(forWidth: 0) == .zero)
@@ -84,7 +84,7 @@ struct SectionHeaderTests {
     }
 
     @Test
-    func headerModifierPreservesOtherConfiguration() {
+    func `header modifier preserves other configuration`() {
         let proxy = CollectionVGridProxy()
         var reachedTop = false
         let grid = configuration(count: 1)
@@ -99,7 +99,7 @@ struct SectionHeaderTests {
     }
 
     @Test
-    func headerScrollsResizesUpdatesAndDisappearsWithoutChangingItems() async throws {
+    func `header scrolls resizes updates and disappears without changing items`() async throws {
         let harness = GridHarness(configuration(count: 10000, headerHeight: 80))
         defer { harness.close() }
         try await harness.layout()
@@ -158,7 +158,7 @@ struct SectionHeaderTests {
     }
 
     @Test
-    func emptyGridCanDisplayAddAndRemoveAHeader() async throws {
+    func `empty grid can display add and remove A header`() async throws {
         let harness = GridHarness(configuration(count: 0).header(isVisible: false) {
             Color.red.frame(height: 80)
         })

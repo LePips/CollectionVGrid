@@ -198,8 +198,8 @@ public class UICollectionVGrid<
             collectionView.refreshControl = nil
             return
         }
-
         guard collectionView.refreshControl == nil else { return }
+
         let control = UIRefreshControl()
         control.addTarget(self, action: #selector(didRequestRefresh), for: .valueChanged)
         collectionView.refreshControl = control
@@ -208,15 +208,18 @@ public class UICollectionVGrid<
     @objc
     private func didRequestRefresh() {
         guard refreshTask == nil, let action = refreshAction else { return }
+
         let generation = refreshGeneration
 
         // Start outside the control event/update pass so the action can suspend
         // and update the grid without blocking UIKit.
         refreshTask = Task { @MainActor [weak self] in
             guard !Task.isCancelled else { return }
+
             await action()
             // A cancelled action may finish after refresh has been re-enabled.
             guard let self, self.refreshGeneration == generation else { return }
+
             self.collectionView.refreshControl?.endRefreshing()
             self.refreshTask = nil
         }
@@ -227,6 +230,7 @@ public class UICollectionVGrid<
         for path in collectionView.indexPathsForVisibleItems {
             guard (0 ..< itemCount).contains(path.item),
                   let cell = collectionView.cellForItem(at: path) as? HostingCollectionViewCell<Content> else { continue }
+
             let item = item(at: path.item)
             let location = CollectionVGridLocation(column: path.item % max(columns, 1), row: path.item / max(columns, 1))
             cell.setup(view: viewProvider(element(at: path.item), location), id: AnyHashable(item.differenceIdentifier))
@@ -467,6 +471,7 @@ public class UICollectionVGrid<
             let reachBottomPosition = collectionView.contentSize.height - offset
             reachedBottom = collectionView.contentOffset.y + collectionView.bounds.height >= reachBottomPosition &&
                 collectionView.contentOffset.y > 0
+
         case let .rows(rows):
             let maxIndexPath = collectionView
                 .indexPathsForVisibleItems
@@ -507,8 +512,7 @@ public class UICollectionVGrid<
     }
 
     private func updateItemSize(forWidth width: CGFloat) {
-        guard width.isFiniteAndPositive else { return }
-        guard needsSizingUpdate || lastLaidOutWidth != width else { return }
+        guard width.isFiniteAndPositive, needsSizingUpdate || lastLaidOutWidth != width else { return }
 
         let resolvedSize = computeItemSize(forWidth: width)
         let newItemSize = resolvedSize.itemSize
@@ -576,6 +580,7 @@ public class UICollectionVGrid<
 
     private func itemCount(inRows rows: Int) -> Int {
         guard rows > 0 else { return 0 }
+
         let (itemCount, overflow) = rows.multipliedReportingOverflow(by: columns)
         return overflow ? Int.max : itemCount
     }

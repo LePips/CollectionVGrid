@@ -81,12 +81,14 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         ])
         dataSource = NSCollectionViewDiffableDataSource(collectionView: collectionView) { [weak self] collection, path, id in
             guard let self, let element = self.element(at: path.item, id: id) else { return nil }
+
             let item = collection.makeItem(withIdentifier: .init("content"), for: path) as! HostingCollectionViewItem
             item.configure(self.configuration.viewProvider(element, self.location(at: path.item)), id: AnyHashable(id))
             return item
         }
         dataSource.supplementaryViewProvider = { [weak self] collection, kind, path in
             guard let header = self?.header else { return nil }
+
             let view = collection.makeSupplementaryView(ofKind: kind, withIdentifier: .init("header"), for: path)
                 as! HostingCollectionViewHeader
             header.attach(to: view)
@@ -113,6 +115,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         super.layout()
         let width = scrollView.contentSize.width
         guard width.isFiniteAndPositive else { return }
+
         let headerHeight = header?.size(forWidth: width).height ?? 0
         if appliedWidth == width, collectionLayout.headerHeight == headerHeight {
             let contentSize = collectionLayout.collectionViewContentSize
@@ -190,6 +193,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             return dataIndex.element(in: configuration.data, at: position)
         }
         guard let sourceIndex = indicesByID[id] else { return nil }
+
         return configuration.data[sourceIndex]
     }
 
@@ -197,6 +201,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         for path in collectionView.indexPathsForVisibleItems() {
             guard let id = dataSource.itemIdentifier(for: path), let element = element(at: path.item, id: id),
                   let item = collectionView.item(at: path) as? HostingCollectionViewItem else { continue }
+
             item.configure(configuration.viewProvider(element, location(at: path.item)), id: AnyHashable(id))
         }
     }
@@ -215,10 +220,12 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
 
     func computeItemSize(forWidth width: CGFloat) -> (columns: Int, itemSize: CGSize) {
         guard width.isFiniteAndPositive else { return (1, .zero) }
+
         let resolvedWidth = configuration.layout.itemWidth(for: width)
         let columns = resolvedWidth.columns
         let itemWidth = resolvedWidth.width
         guard !ids.isEmpty, itemWidth > 0 else { return (columns, CGSize(width: itemWidth, height: 0)) }
+
         let element = dataIndex.element(in: configuration.data, at: 0)
         let size = itemSizeCache.size(width: itemWidth, sizing: configuration.layout.itemSizing) {
             measuredContentSize(configuration.viewProvider(element, .init(column: -1, row: -1)), width: itemWidth)
@@ -255,6 +262,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     private func scheduleScrollUpdate() {
         scrollWork?.cancel()
         guard !disconnected else { return }
+
         let work = DispatchWorkItem { [weak self] in self?.publishScrollState() }
         scrollWork = work
         DispatchQueue.main.async(execute: work)
@@ -262,6 +270,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
 
     private func publishScrollState() {
         guard ids.isNotEmpty else { return }
+
         let viewport = scrollView.contentView.bounds
         let visible = collectionView.indexPathsForVisibleItems().map(\.item)
         let columns = max(1, collectionLayout.lanes)

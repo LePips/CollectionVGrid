@@ -4,7 +4,7 @@ import Testing
 
 struct UtilitiesTests {
     @Test
-    func clampingHandlesBoundsAndCollapsedRanges() {
+    func `clamping handles bounds and collapsed ranges`() {
         #expect(Int.min.clamped(to: -10 ... 10) == -10)
         #expect(Int.max.clamped(to: -10 ... 10) == 10)
         #expect((-10).clamped(to: -10 ... 10) == -10)
@@ -17,7 +17,7 @@ struct UtilitiesTests {
     }
 
     @Test
-    func dimensionValidationHandlesInvalidValuesWithoutRoundingFractions() {
+    func `dimension validation handles invalid values without rounding fractions`() {
         for value: CGFloat in [.nan, .infinity, -.infinity, -1, 0] {
             #expect(!value.isFiniteAndPositive)
             #expect(value.positiveFinite(or: 1) == 1)

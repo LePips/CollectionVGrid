@@ -2,8 +2,10 @@ import CollectionVGrid
 import SwiftUI
 
 struct InfiniteGridView: View {
-    @State private var itemCount = 100
-    @State private var isLoading = false
+    @State
+    private var itemCount = 100
+    @State
+    private var isLoading = false
 
     var body: some View {
         CollectionVGrid(count: itemCount, layout: .minWidth(180)) { index in
@@ -24,6 +26,7 @@ struct InfiniteGridView: View {
         }
         .task(id: isLoading) {
             guard isLoading else { return }
+
             do {
                 try await Task.sleep(for: .milliseconds(500))
                 itemCount += 100

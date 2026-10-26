@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct CollectionVGridUpdateTests {
     @Test
-    func collidingIDsSlicesAndStagedUpdatesKeepTheCorrectElements() async throws {
+    func `colliding I ds slices and staged updates keep the correct elements`() async throws {
         var configured: [Int] = []
         let values = (0 ..< 8).map(CollidingID.init)
         let view = UICollectionVGrid(
@@ -42,7 +42,7 @@ struct CollectionVGridUpdateTests {
     }
 
     @Test
-    func hostingControllerSurvivesCellReuse() {
+    func `hosting controller survives cell reuse`() {
         let cell = HostingCollectionViewCell<Text>()
         cell.setup(view: Text("First"), id: 1)
         let host = cell.contentView.subviews.first

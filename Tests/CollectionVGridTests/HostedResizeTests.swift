@@ -19,7 +19,7 @@ struct CollectionVGridHostedResizeTests {
     }
 
     @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
-    func hostedCollectionResizesAndStaysVirtualized(sizing: CollectionVGridLayout.ItemSizing) async throws {
+    func `hosted collection resizes and stays virtualized`(sizing: CollectionVGridLayout.ItemSizing) async throws {
         let host = UIHostingController(rootView: CollectionVGridResizeFixture(sizing: sizing))
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1024, height: 1000))
         window.rootViewController = host

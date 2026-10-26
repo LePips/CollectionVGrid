@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct SafeAreaTests {
     @Test
-    func insetAdjustmentCanBeDisabledAndRestoredWithAHeader() async throws {
+    func `inset adjustment can be disabled and restored with A header`() async throws {
         let configuration = CollectionVGrid(count: 100, layout: .columns(
             3, insets: .init(top: 20, leading: 40, bottom: 20, trailing: 40), itemSizing: .height
         )) { _ in Color.blue.frame(height: 80) }
@@ -55,7 +55,7 @@ struct SafeAreaTests {
     }
 
     @Test
-    func cellContentUsesItsFullBoundsAcrossUpdates() async throws {
+    func `cell content uses its full bounds across updates`() async throws {
         let geometry = CellGeometry()
         let cell = HostingCollectionViewCell<CellContent>(frame: CGRect(x: 0, y: 0, width: 320, height: 180))
         cell.setup(view: CellContent(geometry: geometry, color: .blue), id: 1)
@@ -81,11 +81,10 @@ struct SafeAreaTests {
     }
 
     private func makeWindow(controller: UIViewController) -> UIWindow {
-        let window: UIWindow
-        if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
-            window = UIWindow(windowScene: scene)
+        let window: UIWindow = if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+            UIWindow(windowScene: scene)
         } else {
-            window = UIWindow(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+            UIWindow(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
         }
         window.rootViewController = controller
         window.makeKeyAndVisible()

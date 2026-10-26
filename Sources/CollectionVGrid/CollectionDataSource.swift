@@ -3,8 +3,10 @@ import DifferenceKit
 /// Identity metadata only; repeated positions never retain another element copy.
 @usableFromInline
 struct CollectionItem<ID: Hashable>: Differentiable {
-    @usableFromInline let id: ID
-    @usableFromInline var repetition: Int
+    @usableFromInline
+    let id: ID
+    @usableFromInline
+    var repetition: Int
 
     @inlinable
     init(id: ID, repetition: Int = 0) {
@@ -67,6 +69,7 @@ struct CollectionDataTransition<Data: Collection, ID: Hashable> where Data.Index
         guard let offset = indices[id] else {
             preconditionFailure("A staged identity must exist in the current or previous source")
         }
+
         if offset >= 0 {
             return index.element(in: data, at: offset)
         }

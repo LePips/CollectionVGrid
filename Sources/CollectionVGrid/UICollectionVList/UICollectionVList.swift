@@ -152,6 +152,7 @@ public class UICollectionVList<
             for path in collectionView.indexPathsForVisibleItems where path.section == 1 {
                 guard dataIndex.ids.indices.contains(path.item),
                       let cell = collectionView.cellForItem(at: path) as? HostingCollectionViewCell<AnyView> else { continue }
+
                 let element = dataIndex.element(in: data, at: path.item)
                 cell.setup(
                     view: AnyView(viewProvider(element, .init(column: 0, row: path.item))),

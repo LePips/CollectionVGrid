@@ -8,7 +8,7 @@ import Testing
 struct CollectionVGridSizingTests {
 
     @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
-    func contentMeasurementIsCachedAcrossResizeWidths(sizing: CollectionVGridLayout.ItemSizing) {
+    func `content measurement is cached across resize widths`(sizing: CollectionVGridLayout.ItemSizing) {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter, layout: .columns(2, itemSizing: sizing))
 
@@ -25,7 +25,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func measuredHeightStaysFixedAcrossAdaptiveColumnChanges() {
+    func `measured height stays fixed across adaptive column changes`() {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter, layout: .minWidth(100, insets: .init(), itemSpacing: 10, itemSizing: .height))
         let initial = grid.computeItemSize(forWidth: 210)
@@ -38,7 +38,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func changingSizingUpdatesLayoutAtTheSameWidth() throws {
+    func `changing sizing updates layout at the same width`() throws {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter)
         func layout(_ sizing: CollectionVGridLayout.ItemSizing) -> CollectionVGridLayout {
@@ -65,7 +65,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func measuredProportionsDetermineHeightForEveryResizeWidth() {
+    func `measured proportions determine height for every resize width`() {
         let grid = makeGrid(counter: MeasurementCounter())
 
         let initialSize = grid.computeItemSize(forWidth: 210)
@@ -78,14 +78,14 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func fractionalWidthMeasurementPreservesContentProportions() {
+    func `fractional width measurement preserves content proportions`() {
         let grid = makeMutableAspectRatioGrid(aspectRatio: MutableAspectRatio(2 / 3), proxy: .init())
         #expect(abs(grid.computeItemSize(forWidth: 550 / 3).itemSize.height - 130) <= 0.001)
         #expect(abs(grid.computeItemSize(forWidth: 810).itemSize.height - 600) <= 0.001)
     }
 
     @Test(arguments: [320.0, 375, 390, 393, 402, 414, 430, 440, 744, 768, 810, 834, 1024, 1366, 375.25, 375.5, 375.75])
-    func threePortraitColumnsStayOnTheSameRow(width: CGFloat) throws {
+    func `three portrait columns stay on the same row`(width: CGFloat) throws {
         let grid = UICollectionVGrid(
             id: \Int.self,
             data: Array(0 ..< 9),
@@ -115,7 +115,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
-    func dataChangesAndDynamicTypeRemeasureContent(sizing: CollectionVGridLayout.ItemSizing) {
+    func `data changes and dynamic type remeasure content`(sizing: CollectionVGridLayout.ItemSizing) {
         let counter = MeasurementCounter()
         let layout = CollectionVGridLayout.columns(2, insets: .init(), itemSpacing: 10, itemSizing: sizing)
         let grid = makeGrid(counter: counter, layout: layout)
@@ -136,7 +136,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func zeroWidthDoesNotCreateAMeasurement() {
+    func `zero width does not create A measurement`() {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter)
         #expect(grid.computeItemSize(forWidth: 0).itemSize.height == 0)
@@ -147,7 +147,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func zeroHeightDoesNotCacheInvalidProportions() {
+    func `zero height does not cache invalid proportions`() {
         let counter = MeasurementCounter()
         counter.height = 0
         let grid = makeGrid(counter: counter)
@@ -159,7 +159,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func emptyCollectionMeasuresWhenDataArrives() {
+    func `empty collection measures when data arrives`() {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter, data: [])
         #expect(grid.computeItemSize(forWidth: 210).itemSize.height == 0)
@@ -175,7 +175,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func resizeDerivesProportionsFromMeasuredContent() {
+    func `resize derives proportions from measured content`() {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter)
 
@@ -186,7 +186,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func proxyRedrawRemeasuresAContentDefinedAspectRatio() throws {
+    func `proxy redraw remeasures A content defined aspect ratio`() throws {
         let aspectRatio = MutableAspectRatio(2 / 3)
         let proxy = CollectionVGridProxy()
         let grid = makeMutableAspectRatioGrid(aspectRatio: aspectRatio, proxy: proxy)
@@ -221,7 +221,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func widthOnlyResizeUpdatesFlowLayoutAndResolvedItemWidth() async throws {
+    func `width only resize updates flow layout and resolved item width`() async throws {
         let grid = makeGrid(counter: MeasurementCounter())
         let layout = CollectionVGridLayout.columns(
             2,
@@ -278,7 +278,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func minimumWidthUsesOneColumnWhenContainerIsNarrowerThanMinimum() {
+    func `minimum width uses one column when container is narrower than minimum`() {
         let grid = makeGrid(
             counter: MeasurementCounter(),
             layout: .minWidth(
@@ -296,7 +296,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func invalidSizingInputsFallBackWithoutProducingInvalidDimensions() {
+    func `invalid sizing inputs fall back without producing invalid dimensions`() {
         let counter = MeasurementCounter()
         let invalidColumnsGrid = makeGrid(
             counter: counter,
@@ -332,7 +332,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func largeCollectionResizeReusesInitialMeasurement() {
+    func `large collection resize reuses initial measurement`() {
         let counter = MeasurementCounter()
         let grid = makeGrid(counter: counter, data: Array(0 ..< 10000))
         for step in 0 ..< 120 {
@@ -343,7 +343,7 @@ struct CollectionVGridSizingTests {
     }
 
     @Test
-    func redrawUsesUpdatedContentProvider() {
+    func `redraw uses updated content provider`() {
         let original = MeasurementCounter()
         let replacement = MeasurementCounter()
         let grid = makeGrid(counter: original)

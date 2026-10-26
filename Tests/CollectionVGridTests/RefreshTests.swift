@@ -56,7 +56,7 @@ struct CollectionVGridRefreshTests {
     }
 
     @Test
-    func emptyGridRefreshWaitsForCompletionAndIgnoresDuplicatePulls() async throws {
+    func `empty grid refresh waits for completion and ignores duplicate pulls`() async throws {
         let view = makeGrid()
         let gate = RefreshGate()
         var calls = 0
@@ -64,7 +64,8 @@ struct CollectionVGridRefreshTests {
         let configured = original.onRefresh {
             calls += 1
             await gate.wait()
-        }.onReachedBottomEdge {} // The modifier preserves CollectionVGrid's type.
+        }
+        .onReachedBottomEdge {} // The modifier preserves CollectionVGrid's type.
         #expect(original.refreshAction == nil)
         view.configure(configured)
         let window = makeWindow(containing: view)
@@ -92,7 +93,7 @@ struct CollectionVGridRefreshTests {
     }
 
     @Test
-    func disablingRefreshCancelsAndOldCompletionCannotStopNewRefresh() async throws {
+    func `disabling refresh cancels and old completion cannot stop new refresh`() async throws {
         let view = makeGrid()
         let oldGate = RefreshGate()
         var oldWasCancelled = false
@@ -127,7 +128,7 @@ struct CollectionVGridRefreshTests {
     }
 
     @Test
-    func dismantlingCancelsRefreshAndTaskDoesNotRetainGrid() async throws {
+    func `dismantling cancels refresh and task does not retain grid`() async throws {
         var view: NativeGrid? = makeGrid()
         weak var weakView = view
         let gate = RefreshGate()
@@ -152,7 +153,7 @@ struct CollectionVGridRefreshTests {
     }
 
     @Test
-    func hostedCustomActionUpdatesSwiftUIDataWithoutDeadlocking() async throws {
+    func `hosted custom action updates swift UI data without deadlocking`() async throws {
         let model = RefreshModel()
         let host = UIHostingController(rootView: RefreshFixture(model: model))
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 600))
@@ -194,16 +195,20 @@ private final class RefreshGate {
 
 @MainActor
 private final class RefreshModel: ObservableObject {
-    @Published var count = 0
-    @Published var enabled = true
+    @Published
+    var count = 0
+    @Published
+    var enabled = true
     let gate = RefreshGate()
 }
 
 private struct RefreshFixture: View {
-    @ObservedObject var model: RefreshModel
+    @ObservedObject
+    var model: RefreshModel
 
     private var refreshAction: (@MainActor () async -> Void)? {
         guard model.enabled else { return nil }
+
         return {
             model.count = 4
             await model.gate.wait()
