@@ -5,8 +5,11 @@ let cellReuseIdentifier = "HostingCollectionViewCell"
 
 final class HostingCollectionViewCell<Content: View>: UICollectionViewCell {
     private var hostingController: UIHostingController<AnyView>?
+    /// The collection's content generation when this cell's view was last supplied.
+    private(set) var contentGeneration = 0
 
-    func setup(view: Content, id: AnyHashable? = nil) {
+    func setup(view: Content, id: AnyHashable? = nil, generation: Int = 0) {
+        contentGeneration = generation
         let root = AnyView(view.id(id))
         if let hostingController {
             hostingController.rootView = root

@@ -73,7 +73,8 @@ extension CollectionVGrid: UIViewRepresentable {
             isScrollEnabled: context.environment.isScrollEnabled,
             verticalScrollIndicatorVisibility: context.environment.verticalScrollIndicatorVisibility,
             itemMeasurementRevision: itemMeasurementRevision,
-            viewProvider: viewProvider
+            viewProvider: viewProvider,
+            defersContentRefresh: true
         )
     }
 

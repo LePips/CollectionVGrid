@@ -16,4 +16,12 @@ extension CollectionVGridLayout {
         let width = nonnegativeFinite((contentWidth - CGFloat(columns - 1) * spacing) / CGFloat(columns))
         return (width, columns)
     }
+
+    /// Whether two layouts differ only in their top and bottom insets, which leave
+    /// item widths and the content measured at them unchanged.
+    func differsOnlyInVerticalInsets(from other: Self) -> Bool {
+        layoutType == other.layoutType && layoutValue == other.layoutValue
+            && itemSpacing == other.itemSpacing && lineSpacing == other.lineSpacing && itemSizing == other.itemSizing
+            && insets.leading == other.insets.leading && insets.trailing == other.insets.trailing
+    }
 }

@@ -51,6 +51,19 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     private var reachedEdges: Set<Edge> = []
     private var scrollWork: DispatchWorkItem?
     private var disconnected = false
+    private var scrollAnchor: ScrollAnchor?
+    private var anchoredOffset: CGFloat?
+    private var isApplyingLayout = false
+
+    /// The position to preserve when the grid reflows for a new width. Recorded once,
+    /// then reused across consecutive resizes so rounded offsets cannot accumulate drift.
+    private enum ScrollAnchor {
+        case top
+        case bottom
+        /// An item at the top of the viewport, offset by a fraction of its height,
+        /// or by points when the viewport begins above the item (in a gap or the header).
+        case item(index: Int, offset: CGFloat, isProportional: Bool)
+    }
 
     init(configuration: CollectionVGrid<Element, Data, ID, Content>) {
         self.configuration = configuration
@@ -124,6 +137,10 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             }
             return
         }
+        // Record the position against the outgoing layout before any metrics change.
+        let anchor = appliedWidth.map { $0 != width } == true ? scrollAnchor ?? currentScrollAnchor() : nil
+        isApplyingLayout = true
+        defer { isApplyingLayout = false }
         let result = computeItemSize(forWidth: width)
         let previousColumns = collectionLayout.lanes
         collectionLayout.lanes = result.columns
@@ -135,6 +152,10 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         collectionLayout.invalidateLayout()
         collectionView.setFrameSize(collectionLayout.collectionViewContentSize)
         appliedWidth = width
+        if let anchor {
+            scrollAnchor = anchor
+            restoreScrollPosition(to: anchor)
+        }
         if previousColumns != result.columns {
             refreshVisibleItems()
         }
@@ -172,6 +193,10 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         scrollView.verticalScroller?.isEnabled = isScrollEnabled
         if changedData || changedLayout || changedMeasurement {
             invalidateSizing()
+        }
+        if changedData {
+            scrollAnchor = nil
+            anchoredOffset = nil
         }
         if changedData || collectionView.numberOfSections == 0 {
             var snapshot = NSDiffableDataSourceSnapshot<Int, ID>()
@@ -239,6 +264,8 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     }
 
     public func scrollToTop(animated: Bool) {
+        scrollAnchor = nil
+        anchoredOffset = nil
         if animated {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2
@@ -251,8 +278,63 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         scheduleScrollUpdate()
     }
 
+    // MARK: scroll anchoring
+
+    private var maximumOffset: CGFloat {
+        max(0, collectionLayout.collectionViewContentSize.height - scrollView.contentView.bounds.height)
+    }
+
+    private func currentScrollAnchor() -> ScrollAnchor? {
+        guard ids.isNotEmpty else { return nil }
+
+        let viewport = scrollView.contentView.bounds
+        if viewport.minY <= 0.5 {
+            return .top
+        }
+        if viewport.minY >= maximumOffset - 0.5 {
+            return .bottom
+        }
+        let first = collectionLayout.layoutAttributesForElements(in: viewport)
+            .filter { $0.representedElementCategory == .item && $0.frame.maxY > viewport.minY && $0.frame.height.isFiniteAndPositive }
+            .min { ($0.frame.minY, $0.indexPath?.item ?? 0) < ($1.frame.minY, $1.indexPath?.item ?? 0) }
+        guard let first, let index = first.indexPath?.item else { return nil }
+
+        let isProportional = first.frame.minY <= viewport.minY
+        return .item(
+            index: index,
+            offset: isProportional ? (viewport.minY - first.frame.minY) / first.frame.height : viewport.minY - first.frame.minY,
+            isProportional: isProportional
+        )
+    }
+
+    private func restoreScrollPosition(to anchor: ScrollAnchor) {
+        let target: CGFloat
+        switch anchor {
+        case .top:
+            target = 0
+        case .bottom:
+            target = maximumOffset
+        case let .item(index, offset, isProportional):
+            guard let attributes = collectionLayout.layoutAttributesForItem(at: IndexPath(item: index, section: 0)) else { return }
+
+            target = attributes.frame.minY + (isProportional ? offset * attributes.frame.height : offset)
+        }
+        let offset = target.clamped(to: 0 ... maximumOffset)
+        anchoredOffset = offset
+        guard abs(offset - scrollView.contentView.bounds.minY) > 0.001 else { return }
+
+        scrollView.contentView.scroll(to: CGPoint(x: 0, y: offset))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
     @objc
     private func boundsChanged() {
+        // Any other movement establishes a new position to preserve on the next resize.
+        let tolerance = 1 / max(window?.backingScaleFactor ?? 1, 1)
+        if !isApplyingLayout, let anchoredOffset, abs(scrollView.contentView.bounds.minY - anchoredOffset) > tolerance {
+            scrollAnchor = nil
+            self.anchoredOffset = nil
+        }
         if appliedWidth != scrollView.contentSize.width {
             needsLayout = true
         }

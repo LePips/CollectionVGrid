@@ -12,6 +12,9 @@ import SwiftUI
 // TODO: prefetching
 //       - like CollectionHStack
 
+/// Visible content refreshes wait this long after the latest geometry change.
+private let resizeSettleDelay: TimeInterval = 0.1
+
 public protocol _UICollectionVGrid: UIView {
 
     func snapshotReload()
@@ -44,6 +47,10 @@ public class UICollectionVGrid<
         stagedItems?.count ?? dataIndex.ids.count
     }
 
+    private var isDataUpdateInProgress: Bool {
+        stagedItems != nil
+    }
+
     private var data: Data
     private var header: CollectionHeader?
     private var itemMeasurementRevision = 0
@@ -51,7 +58,6 @@ public class UICollectionVGrid<
     private var itemSizeCache = ItemSizeCache()
     private var lastLaidOutWidth: CGFloat?
     private var layout: CollectionVGridLayout
-    private var layoutInvalidationGeneration = 0
     private var needsSizingUpdate = true
     private var onReachedBottomEdge: () -> Void
     private var onReachedBottomEdgeOffset: CollectionVGridEdgeOffset
@@ -59,6 +65,27 @@ public class UICollectionVGrid<
     private var onReachedTopEdgeOffset: CollectionVGridEdgeOffset
     private var onReachedEdgeStore: Set<Edge>
     private var viewProvider: (Element, CollectionVGridLocation) -> Content
+
+    // resizing
+    private var contentGeneration = 0
+    private var needsContentRefresh = false
+    private var contentRefreshGeneration = 0
+    private var lastGeometryChangeTime: CFTimeInterval = -.infinity
+    /// Unlike `lastLaidOutWidth`, this survives sizing invalidation.
+    private var lastAppliedWidth: CGFloat?
+    private var scrollAnchor: ScrollAnchor?
+    private var isAdjustingScrollPosition = false
+
+    /// The position to preserve when the grid reflows for a new width. Recorded once,
+    /// before the collection resizes, then reused across consecutive resizes so
+    /// pixel-rounded offsets cannot accumulate drift.
+    private enum ScrollAnchor {
+        case top
+        case bottom
+        /// An item at the top of the visible area, offset by a fraction of its height,
+        /// or by points when the area begins above the item (in a gap or the header).
+        case item(index: Int, offset: CGFloat, isProportional: Bool)
+    }
 
     #if os(iOS)
     private var refreshAction: (@MainActor () async -> Void)?
@@ -110,7 +137,7 @@ public class UICollectionVGrid<
 
     private lazy var collectionView: UICollectionView = {
 
-        let flowLayout = UICollectionViewFlowLayout()
+        let flowLayout = CollectionVGridFlowLayout()
         flowLayout.sectionInset = layout.insets.asUIEdgeInsets
         flowLayout.minimumLineSpacing = nonnegativeFinite(layout.lineSpacing)
         flowLayout.minimumInteritemSpacing = nonnegativeFinite(layout.itemSpacing)
@@ -143,18 +170,52 @@ public class UICollectionVGrid<
         return collectionView
     }()
 
+    // Auto Layout reflows the collection during layoutSubviews, so record the
+    // scroll position while the outgoing layout is still in place.
+    override public var bounds: CGRect {
+        willSet {
+            if newValue.width != bounds.width {
+                recordScrollAnchor()
+            }
+        }
+    }
+
+    override public var frame: CGRect {
+        willSet {
+            if newValue.width != frame.width {
+                recordScrollAnchor()
+            }
+        }
+    }
+
     // MARK: layoutSubviews
 
     override public func layoutSubviews() {
+        defer { refreshContentIfSettled() }
+        // Resizing the collection can clamp its offset; that is not a new position.
+        let wasAdjustingScrollPosition = isAdjustingScrollPosition
+        isAdjustingScrollPosition = true
+        defer { isAdjustingScrollPosition = wasAdjustingScrollPosition }
         super.layoutSubviews()
 
         // Auto Layout can pixel-align the collection to a slightly different width.
         // Use the outer width only until the collection has its initial bounds.
-        updateItemSize(forWidth: collectionView.bounds.width.positiveFinite(or: bounds.width))
+        var reflowed = updateItemSize(forWidth: collectionView.bounds.width.positiveFinite(or: bounds.width))
         let headerSize = header?.size(forWidth: collectionView.bounds.width) ?? .zero
         if collectionView.flowLayout.headerReferenceSize != headerSize {
             collectionView.flowLayout.headerReferenceSize = headerSize
-            invalidateCollectionLayout()
+            collectionView.collectionViewLayout.invalidateLayout()
+            reflowed = true
+        }
+        if reflowed {
+            // Position the reflowed content before laying out cells, so cells are
+            // laid out once, at their final offset.
+            if let scrollAnchor {
+                restoreScrollPosition(to: scrollAnchor)
+            }
+            // The delegate already uses the current width, so finish this geometry
+            // pass without queuing a second invalidation into the next animation frame.
+            collectionView.layoutIfNeeded()
         }
 
         if let viewController = closestUIViewController() {
@@ -226,15 +287,127 @@ public class UICollectionVGrid<
     }
     #endif
 
+    // MARK: content refresh
+
+    /// Supplies the latest views and locations to visible cells that predate the
+    /// current content generation.
     private func refreshVisibleItems() {
+        needsContentRefresh = false
+        let visibleColumns = max(layout.itemWidth(for: collectionView.bounds.width).columns, 1)
         for path in collectionView.indexPathsForVisibleItems {
             guard (0 ..< itemCount).contains(path.item),
-                  let cell = collectionView.cellForItem(at: path) as? HostingCollectionViewCell<Content> else { continue }
+                  let cell = collectionView.cellForItem(at: path) as? HostingCollectionViewCell<Content>,
+                  cell.contentGeneration != contentGeneration else { continue }
 
-            let item = item(at: path.item)
-            let location = CollectionVGridLocation(column: path.item % max(columns, 1), row: path.item / max(columns, 1))
-            cell.setup(view: viewProvider(element(at: path.item), location), id: AnyHashable(item.differenceIdentifier))
+            configure(cell, at: path.item, columns: visibleColumns)
         }
+    }
+
+    /// Containers that adapt to their size update the grid on each resize frame, and
+    /// collapsing bars change its insets on each scroll frame, usually without changing
+    /// any item content. Visible cells are already laid out again, so refreshing their
+    /// content as well would rebuild every hosted view each frame. Defer it until the
+    /// geometry settles; cells that appear meanwhile are configured as usual.
+    private func refreshContentIfSettled() {
+        guard needsContentRefresh else { return }
+
+        let remaining = lastGeometryChangeTime + resizeSettleDelay - CACurrentMediaTime()
+        guard remaining > 0, window != nil else {
+            refreshVisibleItems()
+            return
+        }
+
+        contentRefreshGeneration &+= 1
+        let generation = contentRefreshGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + remaining) { [weak self] in
+            guard let self, self.contentRefreshGeneration == generation else { return }
+
+            self.refreshContentIfSettled()
+        }
+    }
+
+    private func configure(_ cell: HostingCollectionViewCell<Content>, at position: Int, columns: Int) {
+        let location = CollectionVGridLocation(column: position % columns, row: position / columns)
+        cell.setup(
+            view: viewProvider(element(at: position), location),
+            id: AnyHashable(item(at: position).differenceIdentifier),
+            generation: contentGeneration
+        )
+    }
+
+    // MARK: scroll anchoring
+
+    /// Content offsets the collection can rest at, including adjusted content insets.
+    /// The layout's own content size is current even before the collection lays out.
+    private var scrollRange: ClosedRange<CGFloat> {
+        let minimum = -collectionView.adjustedContentInset.top
+        let contentHeight = collectionView.collectionViewLayout.collectionViewContentSize.height
+        let maximum = contentHeight + collectionView.adjustedContentInset.bottom - collectionView.bounds.height
+        return minimum ... max(minimum, maximum)
+    }
+
+    /// Records the leading item at the top of the visible area, unless a position
+    /// from an earlier, uninterrupted resize is still in effect.
+    private func recordScrollAnchor() {
+        guard scrollAnchor == nil, lastAppliedWidth != nil, itemCount > 0, !isDataUpdateInProgress,
+              collectionView.bounds.height.isFiniteAndPositive else { return }
+
+        let offset = collectionView.contentOffset.y
+        let range = scrollRange
+        if offset <= range.lowerBound + 0.5 {
+            scrollAnchor = .top
+            return
+        }
+        if offset >= range.upperBound - 0.5 {
+            scrollAnchor = .bottom
+            return
+        }
+
+        let reference = offset + collectionView.adjustedContentInset.top
+        let visible = CGRect(x: 0, y: reference, width: collectionView.bounds.width, height: collectionView.bounds.height)
+        let first = collectionView.collectionViewLayout
+            .layoutAttributesForElements(in: visible)?
+            .filter { $0.representedElementCategory == .cell && $0.frame.maxY > reference && $0.frame.height.isFiniteAndPositive }
+            .min { ($0.frame.minY, $0.indexPath.item) < ($1.frame.minY, $1.indexPath.item) }
+        guard let first else { return }
+
+        let isProportional = first.frame.minY <= reference
+        scrollAnchor = .item(
+            index: first.indexPath.item,
+            offset: isProportional ? (reference - first.frame.minY) / first.frame.height : reference - first.frame.minY,
+            isProportional: isProportional
+        )
+    }
+
+    /// Queries go through the collection view, which prepares an invalidated layout
+    /// without laying out cells, so the new offset can be applied first. Called
+    /// during layout, which already treats offset changes as adjustments.
+    private func restoreScrollPosition(to anchor: ScrollAnchor) {
+        // Never move content out from under the user's finger or momentum.
+        guard !collectionView.isTracking, !collectionView.isDecelerating, !isDataUpdateInProgress, itemCount > 0 else { return }
+
+        let target: CGFloat
+        switch anchor {
+        case .top:
+            target = scrollRange.lowerBound
+
+        case .bottom:
+            _ = collectionView.layoutAttributesForItem(at: IndexPath(item: itemCount - 1, section: 0))
+            target = scrollRange.upperBound
+
+        case let .item(index, offset, isProportional):
+            guard index < itemCount,
+                  let attributes = collectionView.layoutAttributesForItem(at: IndexPath(item: index, section: 0))
+            else { return }
+
+            let distance = isProportional ? offset * attributes.frame.height : offset
+            target = attributes.frame.minY + distance - collectionView.adjustedContentInset.top
+        }
+
+        let offset = target.clamped(to: scrollRange)
+        guard abs(offset - collectionView.contentOffset.y) > 0.001 else { return }
+
+        collectionView.contentOffset.y = offset
     }
 
     private func item(at position: Int) -> CollectionItem<ID> {
@@ -263,7 +436,8 @@ public class UICollectionVGrid<
         isScrollEnabled: Bool,
         verticalScrollIndicatorVisibility: ScrollIndicatorVisibility,
         itemMeasurementRevision: Int = 0,
-        viewProvider: ((Element, CollectionVGridLocation) -> Content)? = nil
+        viewProvider: ((Element, CollectionVGridLocation) -> Content)? = nil,
+        defersContentRefresh: Bool = false
     ) {
 
         let wasEmpty = data.isEmpty
@@ -281,6 +455,7 @@ public class UICollectionVGrid<
         var lookup: [ID: Int]?
         let hasDataChanges = newIndex.update(from: newData, id: _id, prefix: nil, lookup: &lookup)
         if hasDataChanges {
+            scrollAnchor = nil
             let source = dataIndex.items()
             let target = newIndex.items()
             let changes = StagedChangeset(source: source, target: target, section: 0)
@@ -298,23 +473,44 @@ public class UICollectionVGrid<
             data = newData
             dataIndex = newIndex
         }
-        refreshVisibleItems()
-
         // layout
 
+        // Bars collapsing while scrolling change only the top and bottom insets,
+        // which leave item widths, and therefore measurements, unchanged.
+        let changedVerticalInsetsOnly = layoutChanged && newLayout.differsOnlyInVerticalInsets(from: layout)
         if layoutChanged {
             layout = newLayout
 
-            collectionView.flowLayout.sectionInset = newLayout.insets.asUIEdgeInsets
-            collectionView.flowLayout.minimumLineSpacing = nonnegativeFinite(newLayout.lineSpacing)
-            collectionView.flowLayout.minimumInteritemSpacing = nonnegativeFinite(newLayout.itemSpacing)
-
-            // little animation to make instant change a little prettier
-            // TODO: - figure out cell size animation if desired
-
-            snapshotReload()
-        } else if hasDataChanges || wasEmpty != newData.isEmpty || measurementChanged {
+            let flowLayout = collectionView.flowLayout
+            if flowLayout.sectionInset != newLayout.insets.asUIEdgeInsets {
+                flowLayout.sectionInset = newLayout.insets.asUIEdgeInsets
+            }
+            if flowLayout.minimumLineSpacing != nonnegativeFinite(newLayout.lineSpacing) {
+                flowLayout.minimumLineSpacing = nonnegativeFinite(newLayout.lineSpacing)
+            }
+            if flowLayout.minimumInteritemSpacing != nonnegativeFinite(newLayout.itemSpacing) {
+                flowLayout.minimumInteritemSpacing = nonnegativeFinite(newLayout.itemSpacing)
+            }
+        }
+        // Safe-area and bar insets can change while the user is scrolling.
+        // Relayout the existing cells; reloading them here discards hosted
+        // SwiftUI state and restarts work such as loading artwork.
+        if (layoutChanged && !changedVerticalInsetsOnly) || hasDataChanges || wasEmpty != newData.isEmpty || measurementChanged {
             invalidateSizing()
+        } else if changedVerticalInsetsOnly {
+            lastGeometryChangeTime = CACurrentMediaTime()
+        }
+
+        // Every visible cell, including those configured during staged updates,
+        // now predates the latest data and view provider. SwiftUI lays out the
+        // representable before rendering, which lets geometry changes skip the refresh.
+        contentGeneration &+= 1
+        let structuralChange = hasDataChanges || measurementChanged || (layoutChanged && !changedVerticalInsetsOnly)
+        if !defersContentRefresh || structuralChange || window == nil {
+            refreshVisibleItems()
+        } else {
+            needsContentRefresh = true
+            setNeedsLayout()
         }
 
         collectionView.isScrollEnabled = isScrollEnabled
@@ -379,9 +575,7 @@ public class UICollectionVGrid<
             for: indexPath
         ) as! HostingCollectionViewCell<Content>
 
-        let element = element(at: indexPath.item)
-        let location = CollectionVGridLocation(column: indexPath.row % columns, row: indexPath.row / columns)
-        cell.setup(view: viewProvider(element, location), id: AnyHashable(item(at: indexPath.item).differenceIdentifier))
+        configure(cell, at: indexPath.item, columns: columns)
         return cell
     }
 
@@ -417,13 +611,24 @@ public class UICollectionVGrid<
         sizeForItemAt indexPath: IndexPath
     ) -> CGSize {
 
-        // A size delegate must not invalidate or force the layout that is calling it.
-        itemSize ?? computeItemSize(forWidth: collectionView.bounds.width.positiveFinite(or: bounds.width)).itemSize
+        // UIKit may ask for metrics as soon as the child's bounds change, before
+        // the wrapper's layoutSubviews runs. Never reuse a size from another width.
+        // Keep this query free of layout invalidation and forced layout passes.
+        let width = collectionView.bounds.width.positiveFinite(or: bounds.width)
+        if lastLaidOutWidth == width, let itemSize {
+            return itemSize
+        }
+        return computeItemSize(forWidth: width).itemSize
     }
 
     // MARK: UIScrollViewDelegate
 
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+
+        // Any other movement establishes a new position to preserve on the next resize.
+        if !isAdjustingScrollPosition {
+            scrollAnchor = nil
+        }
 
         guard scrollView.contentSize.height > 0 else { return }
 
@@ -511,45 +716,36 @@ public class UICollectionVGrid<
         return (resolvedWidth.columns, measuredItemSize(width: fittingWidth))
     }
 
-    private func updateItemSize(forWidth width: CGFloat) {
-        guard width.isFiniteAndPositive, needsSizingUpdate || lastLaidOutWidth != width else { return }
+    /// Returns whether the collection reflowed its items.
+    private func updateItemSize(forWidth width: CGFloat) -> Bool {
+        guard width.isFiniteAndPositive, needsSizingUpdate || lastLaidOutWidth != width else { return false }
 
         let resolvedSize = computeItemSize(forWidth: width)
         let newItemSize = resolvedSize.itemSize
         let itemSizeChanged = itemSize != newItemSize
 
+        if resolvedSize.columns != columns {
+            // Every visible cell's location changes with the column count.
+            contentGeneration &+= 1
+            needsContentRefresh = true
+        }
+        if let lastAppliedWidth, lastAppliedWidth != width {
+            lastGeometryChangeTime = CACurrentMediaTime()
+        }
         columns = resolvedSize.columns
         itemSize = newItemSize
         lastLaidOutWidth = width
+        lastAppliedWidth = width
         needsSizingUpdate = false
 
-        guard itemSizeChanged else { return }
+        guard itemSizeChanged else { return false }
 
         // Keep UICollectionViewFlowLayout's cached metrics in sync immediately.
         // During iPad window transitions, invalidating delegate metrics alone can
         // leave its itemSize and existing attributes at the pre-transition width.
         collectionView.flowLayout.itemSize = newItemSize
-        invalidateCollectionLayout()
-    }
-
-    private func invalidateCollectionLayout() {
         collectionView.collectionViewLayout.invalidateLayout()
-
-        // `super.layoutSubviews()` has already laid out the collection view for this
-        // pass. Rebuild its attributes now so the old item width is not displayed for
-        // an extra frame during a window or split-view transition.
-        collectionView.layoutIfNeeded()
-
-        // UIKit can reject the forced child layout while a scene-geometry transaction
-        // is active. Coalesce one reconciliation pass onto the next run-loop turn.
-        layoutInvalidationGeneration += 1
-        let generation = layoutInvalidationGeneration
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.layoutInvalidationGeneration == generation else { return }
-
-            self.collectionView.collectionViewLayout.invalidateLayout()
-            self.collectionView.layoutIfNeeded()
-        }
+        return true
     }
 
     private func invalidateSizing() {
@@ -583,6 +779,21 @@ public class UICollectionVGrid<
 
         let (itemCount, overflow) = rows.multipliedReportingOverflow(by: columns)
         return overflow ? Int.max : itemCount
+    }
+}
+
+class CollectionVGridFlowLayout: UICollectionViewFlowLayout {
+    override func invalidationContext(forBoundsChange newBounds: CGRect) -> UICollectionViewLayoutInvalidationContext {
+        let context = super.invalidationContext(forBoundsChange: newBounds)
+        if newBounds.width != collectionView?.bounds.width,
+           let flowContext = context as? UICollectionViewFlowLayoutInvalidationContext
+        {
+            // Flow layout otherwise keeps delegate sizes from the previous width
+            // while reflowing its attributes, which can briefly change row counts.
+            flowContext.invalidateFlowLayoutDelegateMetrics = true
+            flowContext.invalidateFlowLayoutAttributes = true
+        }
+        return context
     }
 }
 
