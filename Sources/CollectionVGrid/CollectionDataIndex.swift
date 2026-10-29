@@ -29,12 +29,6 @@ struct CollectionDataIndex<ID: Hashable> {
             ?? data[sourceIndex(at: offset)]
     }
 
-    /// Resolve occasional identity queries without maintaining a second copy of
-    /// every ID. Batch identity-based work should use makeLookup() instead.
-    subscript(id: ID) -> Int? {
-        ids.firstIndex(of: id).map { sourceIndex(at: $0) }
-    }
-
     func makeLookup() -> [ID: Int] {
         Dictionary(uniqueKeysWithValues: ids.indices.lazy.map { (ids[$0], sourceIndex(at: $0)) })
     }

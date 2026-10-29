@@ -634,14 +634,14 @@ public class UICollectionVGrid<
 
         // top edge
 
-        handleReachedTopEdge(with: scrollView.contentOffset.y)
+        handleReachedTopEdge()
 
         // bottom edge
 
-        handleReachedBottomEdge(with: scrollView.contentOffset.y)
+        handleReachedBottomEdge()
     }
 
-    private func handleReachedTopEdge(with contentOffset: CGFloat) {
+    private func handleReachedTopEdge() {
 
         let reachedTop: Bool
 
@@ -667,7 +667,7 @@ public class UICollectionVGrid<
         }
     }
 
-    private func handleReachedBottomEdge(with contentOffset: CGFloat) {
+    private func handleReachedBottomEdge() {
 
         let reachedBottom: Bool
 

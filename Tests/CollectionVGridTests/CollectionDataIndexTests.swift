@@ -27,7 +27,7 @@ struct CollectionDataIndexTests {
                 #expect(original.baseAddress == current.baseAddress)
             }
         }
-        #expect(try next[#require(index[2])].content == "new")
+        #expect(try next[#require(index.makeLookup()[2])].content == "new")
     }
 
     @Test
@@ -37,15 +37,15 @@ struct CollectionDataIndexTests {
         let inserted = index.update(from: first, id: \.self, prefix: 2)
         #expect(inserted)
         #expect(index.ids == [2, 3])
-        #expect(index[2] == 2)
-        #expect(index[4] == nil)
+        #expect(index.makeLookup()[2] == 2)
+        #expect(index.makeLookup()[4] == nil)
         let originalIDs = index.ids
         let next = [2, 3][...]
         let shiftedIndices = index.update(from: next, id: \.self, prefix: nil)
         #expect(!shiftedIndices)
-        #expect(index[2] == 0)
-        #expect(index[3] == 1)
-        #expect(try next[#require(index[3])] == 3)
+        #expect(index.makeLookup()[2] == 0)
+        #expect(index.makeLookup()[3] == 1)
+        #expect(try next[#require(index.makeLookup()[3])] == 3)
         originalIDs.withUnsafeBufferPointer { original in
             index.ids.withUnsafeBufferPointer { current in
                 #expect(original.baseAddress == current.baseAddress)
@@ -61,14 +61,14 @@ struct CollectionDataIndexTests {
         let reordered = index.update(from: [3, 4, 1], id: \.self, prefix: nil)
         #expect(reordered)
         #expect(index.ids == [3, 4, 1])
-        #expect(index[3] == 0)
-        #expect(index[4] == 1)
-        #expect(index[1] == 2)
-        #expect(index[2] == nil)
+        #expect(index.makeLookup()[3] == 0)
+        #expect(index.makeLookup()[4] == 1)
+        #expect(index.makeLookup()[1] == 2)
+        #expect(index.makeLookup()[2] == nil)
         let removed = index.update(from: [Int](), id: \.self, prefix: nil)
         #expect(removed)
         #expect(index.ids.isEmpty)
-        #expect(index[1] == nil)
+        #expect(index.makeLookup()[1] == nil)
         let stillEmpty = index.update(from: [Int](), id: \.self, prefix: nil)
         #expect(!stillEmpty)
     }
@@ -81,9 +81,9 @@ struct CollectionDataIndexTests {
             let inserted = index.update(from: data, id: \.self, prefix: prefix)
             #expect(inserted)
             #expect(index.ids == [20, 40, 60])
-            #expect(index[20] == 2)
-            #expect(index[40] == 4)
-            #expect(index[60] == 6)
+            #expect(index.makeLookup()[20] == 2)
+            #expect(index.makeLookup()[40] == 4)
+            #expect(index.makeLookup()[60] == 6)
         }
     }
 

@@ -21,8 +21,6 @@ public class UICollectionVList<
     private var deleteActionProvider: ((Element, CollectionVGridLocation) -> Void)?
     private var deleteActionTitle: String
     private var headerProvider: () -> any View
-    private var headerSize: CGSize!
-    private var itemSize: CGSize!
     private var viewProvider: (Element, CollectionVGridLocation) -> Content
 
     public init(
@@ -112,7 +110,6 @@ public class UICollectionVList<
         collectionView.delegate = self
         collectionView.alwaysBounceVertical = true
         collectionView.backgroundColor = nil
-//        collectionView.showsVerticalScrollIndicator = scrollIndicatorsVisible
 
         addSubview(collectionView)
 
@@ -129,7 +126,6 @@ public class UICollectionVList<
     override public func layoutSubviews() {
         super.layoutSubviews()
 
-        itemSize = nil
         collectionView.collectionViewLayout.invalidateLayout()
     }
 

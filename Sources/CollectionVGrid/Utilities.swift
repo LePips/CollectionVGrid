@@ -31,15 +31,6 @@ func nonnegativeFinite(_ value: CGFloat) -> CGFloat {
     value.isFinite ? max(value, 0) : 0
 }
 
-// MARK: CGSize/CGFloat math
-
-func * (lhs: CGSize, rhs: CGFloat) -> CGSize {
-    .init(
-        width: lhs.width * rhs,
-        height: lhs.height * rhs
-    )
-}
-
 // MARK: Collection
 
 extension Collection {
@@ -63,19 +54,7 @@ extension EdgeInsets {
             right: trailing
         )
     }
-
     #endif
-
-    init(_ constant: CGFloat) {
-        self.init(
-            top: constant,
-            leading: constant,
-            bottom: constant,
-            trailing: constant
-        )
-    }
-
-    static let zero: EdgeInsets = .init(.zero)
 }
 
 #if canImport(UIKit)
@@ -100,19 +79,6 @@ extension UICollectionView {
                 showsVerticalScrollIndicator = false
             }
         }
-    }
-}
-
-// MARK: UIEdgeInsets
-
-extension UIEdgeInsets {
-
-    var horizontal: CGFloat {
-        left + right
-    }
-
-    var vertical: CGFloat {
-        top + bottom
     }
 }
 
