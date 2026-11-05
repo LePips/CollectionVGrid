@@ -6,14 +6,20 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct CollectionVGridUpdateTests {
+
     @Test
     func `colliding I ds slices and staged updates keep the correct elements`() async throws {
         var configured: [Int] = []
         let values = (0 ..< 8).map(CollidingID.init)
         let view = UICollectionVGrid(
-            id: \.self, data: values[2 ..< 6], layout: .columns(2),
-            onReachedBottomEdge: {}, onReachedBottomEdgeOffset: .offset(0),
-            onReachedTopEdge: {}, onReachedTopEdgeOffset: .offset(0), proxy: nil
+            id: \.self,
+            data: values[2 ..< 6],
+            layout: .columns(2),
+            onReachedBottomEdge: {},
+            onReachedBottomEdgeOffset: .offset(0),
+            onReachedTopEdge: {},
+            onReachedTopEdgeOffset: .offset(0),
+            proxy: nil
         ) { element, _ in
             configured.append(element.value)
             return Text("\(element.value)").frame(height: 40)
@@ -39,6 +45,21 @@ struct CollectionVGridUpdateTests {
 
         view.update(data: [], layout: .columns(2), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
         #expect(collection.numberOfItems(inSection: 0) == 0)
+
+        view.removeFromSuperview()
+
+        view.update(data: next[...], layout: .columns(2), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
+
+        #expect(collection.numberOfItems(inSection: 0) == next.count)
+
+        controller.view.addSubview(view)
+        view.layoutIfNeeded()
+        configured.removeAll()
+
+        view.update(data: next[...], layout: .columns(2), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
+
+        #expect(!configured.isEmpty)
+        #expect(Set(configured).isSubset(of: Set(next.map(\.value))))
     }
 
     @Test
@@ -54,6 +75,7 @@ struct CollectionVGridUpdateTests {
 }
 
 private struct CollidingID: Hashable {
+
     let value: Int
     func hash(into hasher: inout Hasher) {
         hasher.combine(0)

@@ -1,5 +1,4 @@
 #if canImport(UIKit)
-import DifferenceKit
 import SwiftUI
 
 // TODO: sections of items?
@@ -41,7 +40,7 @@ public class UICollectionVGrid<
 
     private var columns: Int
     private var dataIndex = CollectionDataIndex<ID>()
-    private var stagedItems: [CollectionItem<ID>]?
+    private var stagedItems: CollectionSnapshot<ID>?
     private var dataTransition: CollectionDataTransition<Data, ID>?
     private var itemCount: Int {
         stagedItems?.count ?? dataIndex.ids.count
@@ -330,7 +329,7 @@ public class UICollectionVGrid<
         let location = CollectionVGridLocation(column: position % columns, row: position / columns)
         cell.setup(
             view: viewProvider(element(at: position), location),
-            id: AnyHashable(item(at: position).differenceIdentifier),
+            id: AnyHashable(item(at: position).identity),
             generation: contentGeneration
         )
     }
@@ -421,7 +420,7 @@ public class UICollectionVGrid<
         return dataIndex.element(in: data, at: position)
     }
 
-    // MARK: update
+    // MARK: - Update
 
     override public func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
@@ -439,7 +438,6 @@ public class UICollectionVGrid<
         viewProvider: ((Element, CollectionVGridLocation) -> Content)? = nil,
         defersContentRefresh: Bool = false
     ) {
-
         let wasEmpty = data.isEmpty
         let layoutChanged = newLayout != layout
         let measurementChanged = self.itemMeasurementRevision != itemMeasurementRevision
@@ -456,19 +454,32 @@ public class UICollectionVGrid<
         let hasDataChanges = newIndex.update(from: newData, id: _id, prefix: nil, lookup: &lookup)
         if hasDataChanges {
             scrollAnchor = nil
-            let source = dataIndex.items()
-            let target = newIndex.items()
-            let changes = StagedChangeset(source: source, target: target, section: 0)
-            dataTransition = CollectionDataTransition(
-                previousData: data, previousIndex: dataIndex, currentIndex: newIndex,
-                lookup: &lookup, hasDeletions: changes.contains { !$0.elementDeleted.isEmpty }
-            )
-            stagedItems = source
-            data = newData
-            dataIndex = newIndex
-            collectionView.reload(using: changes) { self.stagedItems = $0 }
-            stagedItems = nil
-            dataTransition = nil
+
+            if collectionView.window == nil {
+                data = newData
+                dataIndex = newIndex
+                collectionView.reloadData()
+            } else {
+                let source = dataIndex.items()
+                let changes = CollectionDiff(source: source, target: newIndex.items(), lookup: lookup)
+
+                dataTransition = CollectionDataTransition(
+                    previousData: data,
+                    previousIndex: dataIndex,
+                    currentIndex: newIndex,
+                    lookup: &lookup,
+                    hasDeletions: !changes.deleted.isEmpty
+                )
+                stagedItems = source
+                data = newData
+                dataIndex = newIndex
+
+                collectionView.apply(changes) { items in
+                    self.stagedItems = items
+                }
+                stagedItems = nil
+                dataTransition = nil
+            }
         } else {
             data = newData
             dataIndex = newIndex

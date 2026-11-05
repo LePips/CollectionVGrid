@@ -15,15 +15,9 @@ let package = Package(
             targets: ["CollectionVGrid"]
         ),
     ],
-    dependencies: [
-        .package(url: "https://github.com/ra1028/DifferenceKit", from: "1.3.0"),
-    ],
     targets: [
         .target(
-            name: "CollectionVGrid",
-            dependencies: [
-                .product(name: "DifferenceKit", package: "DifferenceKit"),
-            ]
+            name: "CollectionVGrid"
         ),
         .testTarget(
             name: "CollectionVGridTests",

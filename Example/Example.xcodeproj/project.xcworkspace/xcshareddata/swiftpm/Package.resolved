@@ -1,15 +1,5 @@
 {
-  "originHash" : "6d9c471d9c69c32e576ab4d1649f63e791eb3c84cfefff768743e4637a05c596",
   "pins" : [
-    {
-      "identity" : "differencekit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ra1028/DifferenceKit",
-      "state" : {
-        "revision" : "073b9671ce2b9b5b96398611427a1f929927e428",
-        "version" : "1.3.0"
-      }
-    },
     {
       "identity" : "swift-collections",
       "kind" : "remoteSourceControl",
