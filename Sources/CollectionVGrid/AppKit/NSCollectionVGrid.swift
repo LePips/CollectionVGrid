@@ -12,15 +12,19 @@ extension CollectionVGrid: NSViewRepresentable {
     public typealias NSViewType = NSCollectionVGrid<Element, Data, ID, Content>
 
     public func makeNSView(context: Context) -> NSViewType {
-        NSViewType(configuration: self)
+        let view = NSViewType(configuration: self)
+        view.updateEnvironment(context.environment)
+        return view
     }
 
     public func updateNSView(_ view: NSViewType, context: Context) {
+        view.updateEnvironment(context.environment)
         view.update(
             configuration: self,
             isScrollEnabled: context.environment.isScrollEnabled,
             indicatorVisibility: context.environment.verticalScrollIndicatorVisibility,
-            dynamicTypeSize: context.environment.dynamicTypeSize
+            dynamicTypeSize: context.environment.dynamicTypeSize,
+            defersContentRefresh: true
         )
     }
 
@@ -31,8 +35,13 @@ extension CollectionVGrid: NSViewRepresentable {
 
 /// A native, reusable collection whose layout work scales with the visible rows.
 public final class NSCollectionVGrid<Element, Data: Collection, ID: Hashable, Content: View>: NSView,
-_NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
+                                                                                              _NSCollectionVGrid
+    where Data.Element == Element,
+    Data.Index == Int
+{
     private var configuration: CollectionVGrid<Element, Data, ID, Content>
+    private var contentEnvironment: EnvironmentValues?
+    private var measurementEnvironment: ContentMeasurementEnvironment?
     let scrollView = CollectionScrollView()
     let collectionView = CollectionDocumentView()
     let collectionLayout = CollectionLayout()
@@ -45,25 +54,18 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
 
     private var updating = false
     private var header: CollectionHeader?
-    private var itemSizeCache = ItemSizeCache()
+    private let itemSizing = CollectionItemSizing<Content>()
+    private let contentRefresh = CollectionContentRefresh()
+    private var lastAppliedWidth: CGFloat?
+    private var resolvedItemSize: (width: CGFloat, columns: Int, size: CGSize)?
     private var appliedWidth: CGFloat?
     private var dynamicTypeSize: DynamicTypeSize?
     private var reachedEdges: Set<Edge> = []
     private var scrollWork: DispatchWorkItem?
     private var disconnected = false
-    private var scrollAnchor: ScrollAnchor?
+    private var scrollAnchor: CollectionScrollAnchor?
     private var anchoredOffset: CGFloat?
     private var isApplyingLayout = false
-
-    /// The position to preserve when the grid reflows for a new width. Recorded once,
-    /// then reused across consecutive resizes so rounded offsets cannot accumulate drift.
-    private enum ScrollAnchor {
-        case top
-        case bottom
-        /// An item at the top of the viewport, offset by a fraction of its height,
-        /// or by points when the viewport begins above the item (in a gap or the header).
-        case item(index: Int, offset: CGFloat, isProportional: Bool)
-    }
 
     init(configuration: CollectionVGrid<Element, Data, ID, Content>) {
         self.configuration = configuration
@@ -71,7 +73,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         collectionView.collectionViewLayout = collectionLayout
         collectionView.backgroundColors = [.clear]
         collectionView.isSelectable = false
-        collectionView.register(HostingCollectionViewItem.self, forItemWithIdentifier: .init("content"))
+        collectionView.register(HostingCollectionViewItem<Content>.self, forItemWithIdentifier: .init("content"))
         collectionView.register(
             HostingCollectionViewHeader.self,
             forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
@@ -83,6 +85,10 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.willScroll = { [weak self] in
+            self?.scrollAnchor = nil
+            self?.anchoredOffset = nil
+        }
         scrollView.documentView = collectionView
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
@@ -95,8 +101,8 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         dataSource = NSCollectionViewDiffableDataSource(collectionView: collectionView) { [weak self] collection, path, id in
             guard let self, let element = self.element(at: path.item, id: id) else { return nil }
 
-            let item = collection.makeItem(withIdentifier: .init("content"), for: path) as! HostingCollectionViewItem
-            item.configure(self.configuration.viewProvider(element, self.location(at: path.item)), id: AnyHashable(id))
+            let item = collection.makeItem(withIdentifier: .init("content"), for: path) as! HostingCollectionViewItem<Content>
+            self.configure(item, element: element, at: path.item, id: id)
             return item
         }
         dataSource.supplementaryViewProvider = { [weak self] collection, kind, path in
@@ -126,6 +132,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
 
     override public func layout() {
         super.layout()
+        defer { refreshContentIfSettled() }
         let width = scrollView.contentSize.width
         guard width.isFiniteAndPositive else { return }
 
@@ -138,11 +145,15 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             return
         }
         // Record the position against the outgoing layout before any metrics change.
-        let anchor = appliedWidth.map { $0 != width } == true ? scrollAnchor ?? currentScrollAnchor() : nil
+        let anchor = lastAppliedWidth.map { $0 != width } == true ? scrollAnchor ?? currentScrollAnchor() : nil
         isApplyingLayout = true
         defer { isApplyingLayout = false }
         let result = computeItemSize(forWidth: width)
         let previousColumns = collectionLayout.lanes
+        if let lastAppliedWidth, lastAppliedWidth != width {
+            contentRefresh.geometryChanged()
+        }
+        lastAppliedWidth = width
         collectionLayout.lanes = result.columns
         collectionLayout.itemSize = result.itemSize
         collectionLayout.insets = configuration.layout.insets.appKitInsets
@@ -157,26 +168,40 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             restoreScrollPosition(to: anchor)
         }
         if previousColumns != result.columns {
-            refreshVisibleItems()
+            contentRefresh.invalidate()
         }
         scheduleScrollUpdate()
+    }
+
+    func updateEnvironment(_ environment: EnvironmentValues) {
+        let signature = ContentMeasurementEnvironment(environment)
+        let measurementChanged = measurementEnvironment != signature
+        measurementEnvironment = signature
+        contentEnvironment = environment
+        if measurementChanged {
+            invalidateSizing()
+        }
     }
 
     func update(
         configuration new: CollectionVGrid<Element, Data, ID, Content>,
         isScrollEnabled: Bool,
         indicatorVisibility: ScrollIndicatorVisibility,
-        dynamicTypeSize: DynamicTypeSize
+        dynamicTypeSize: DynamicTypeSize,
+        defersContentRefresh: Bool = false
     ) {
         let changedLayout = configuration.layout != new.layout || self.dynamicTypeSize != dynamicTypeSize
+        let changedVerticalInsetsOnly = changedLayout && self.dynamicTypeSize == dynamicTypeSize &&
+            new.layout.differsOnlyInVerticalInsets(from: configuration.layout)
         let changedMeasurement = configuration.itemMeasurementRevision != new.itemMeasurementRevision
         if configuration.proxy !== new.proxy, configuration.proxy?.collectionVGrid === self {
             configuration.proxy?.collectionVGrid = nil
         }
-        let changedData = dataIndex.update(from: new.data, id: new._id, prefix: nil, retainingLookup: &indicesByID)
+        let changedData = dataIndex.update(from: new.data, identifier: new.identifier, prefix: nil, retainingLookup: &indicesByID)
         updating = changedData
         configuration = new
         if let content = new.headerContent {
+            let content = AnyView(EnvironmentAwareContent(content: content, environment: contentEnvironment))
             if let header {
                 header.update(content: content)
             } else {
@@ -191,9 +216,13 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         scrollView.allowsScrolling = isScrollEnabled
         scrollView.hasVerticalScroller = isScrollEnabled && indicatorVisibility != .hidden
         scrollView.verticalScroller?.isEnabled = isScrollEnabled
-        if changedData || changedLayout || changedMeasurement {
+        if changedData || (changedLayout && !changedVerticalInsetsOnly) || changedMeasurement {
             invalidateSizing()
+        } else if changedVerticalInsetsOnly {
+            appliedWidth = nil
+            contentRefresh.geometryChanged()
         }
+        contentRefresh.invalidate()
         if changedData {
             scrollAnchor = nil
             anchoredOffset = nil
@@ -206,7 +235,8 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
             dataSource.apply(snapshot, animatingDifferences: false)
             updating = false
             reachedEdges.removeAll()
-        } else {
+        }
+        if !defersContentRefresh || changedData || changedMeasurement || (changedLayout && !changedVerticalInsetsOnly) || window == nil {
             refreshVisibleItems()
         }
         needsLayout = true
@@ -222,12 +252,29 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         return configuration.data[sourceIndex]
     }
 
+    private func refreshContentIfSettled() {
+        contentRefresh.refreshIfSettled(isAttached: window != nil) { [weak self] in
+            self?.refreshVisibleItems()
+        }
+    }
+
+    private func configure(_ item: HostingCollectionViewItem<Content>, element: Element, at position: Int, id: ID) {
+        item.configure(
+            configuration.viewProvider(element, location(at: position)),
+            id: AnyHashable(id),
+            generation: contentRefresh.generation,
+            environment: contentEnvironment
+        )
+    }
+
     private func refreshVisibleItems() {
+        contentRefresh.didRefresh()
         for path in collectionView.indexPathsForVisibleItems() {
             guard let id = dataSource.itemIdentifier(for: path), let element = element(at: path.item, id: id),
-                  let item = collectionView.item(at: path) as? HostingCollectionViewItem else { continue }
+                  let item = collectionView.item(at: path) as? HostingCollectionViewItem<Content>,
+                  item.contentGeneration != contentRefresh.generation else { continue }
 
-            item.configure(configuration.viewProvider(element, location(at: path.item)), id: AnyHashable(id))
+            configure(item, element: element, at: path.item, id: id)
         }
     }
 
@@ -238,7 +285,8 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
 
     private func invalidateSizing() {
         header?.invalidateSize()
-        itemSizeCache = ItemSizeCache()
+        itemSizing.invalidate()
+        resolvedItemSize = nil
         appliedWidth = nil
         needsLayout = true
     }
@@ -246,20 +294,30 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     func computeItemSize(forWidth width: CGFloat) -> (columns: Int, itemSize: CGSize) {
         guard width.isFiniteAndPositive else { return (1, .zero) }
 
+        if let resolvedItemSize, resolvedItemSize.width == width {
+            return (resolvedItemSize.columns, resolvedItemSize.size)
+        }
+
         let resolvedWidth = configuration.layout.itemWidth(for: width)
         let columns = resolvedWidth.columns
         let itemWidth = resolvedWidth.width
         guard !ids.isEmpty, itemWidth > 0 else { return (columns, CGSize(width: itemWidth, height: 0)) }
 
         let element = dataIndex.element(in: configuration.data, at: 0)
-        let size = itemSizeCache.size(width: itemWidth, sizing: configuration.layout.itemSizing) {
-            measuredContentSize(configuration.viewProvider(element, .init(column: -1, row: -1)), width: itemWidth)
+        let size = itemSizing.size(width: itemWidth, sizing: configuration.layout.itemSizing, environment: contentEnvironment) {
+            (configuration.viewProvider(element, .init(column: -1, row: -1)), AnyHashable(configuration.identifier(element)))
+        }
+        if size.width.isFiniteAndPositive, size.height.isFiniteAndPositive {
+            resolvedItemSize = (width, columns, size)
+        } else {
+            resolvedItemSize = nil
         }
         return (columns, size)
     }
 
     public func snapshotReload() {
         invalidateSizing()
+        contentRefresh.invalidate()
         refreshVisibleItems()
     }
 
@@ -284,7 +342,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         max(0, collectionLayout.collectionViewContentSize.height - scrollView.contentView.bounds.height)
     }
 
-    private func currentScrollAnchor() -> ScrollAnchor? {
+    private func currentScrollAnchor() -> CollectionScrollAnchor? {
         guard ids.isNotEmpty else { return nil }
 
         let viewport = scrollView.contentView.bounds
@@ -307,7 +365,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
         )
     }
 
-    private func restoreScrollPosition(to anchor: ScrollAnchor) {
+    private func restoreScrollPosition(to anchor: CollectionScrollAnchor) {
         let target: CGFloat
         switch anchor {
         case .top:
@@ -331,7 +389,11 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     private func boundsChanged() {
         // Any other movement establishes a new position to preserve on the next resize.
         let tolerance = 1 / max(window?.backingScaleFactor ?? 1, 1)
-        if !isApplyingLayout, let anchoredOffset, abs(scrollView.contentView.bounds.minY - anchoredOffset) > tolerance {
+        // AppKit rounds the old clip origin while tiling a new viewport width.
+        // That is resize work, not a new user scroll position. Keeping the
+        // original item anchor prevents those rounded offsets accumulating.
+        let widthChanged = lastAppliedWidth != scrollView.contentSize.width
+        if !isApplyingLayout, !widthChanged, let anchoredOffset, abs(scrollView.contentView.bounds.minY - anchoredOffset) > tolerance {
             scrollAnchor = nil
             self.anchoredOffset = nil
         }
@@ -342,10 +404,16 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
     }
 
     private func scheduleScrollUpdate() {
-        scrollWork?.cancel()
-        guard !disconnected else { return }
+        guard !disconnected, scrollWork == nil else { return }
 
-        let work = DispatchWorkItem { [weak self] in self?.publishScrollState() }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+
+            self.scrollWork = nil
+            guard !self.disconnected else { return }
+
+            self.publishScrollState()
+        }
         scrollWork = work
         DispatchQueue.main.async(execute: work)
     }
@@ -380,6 +448,7 @@ _NSCollectionVGrid where Data.Element == Element, Data.Index == Int {
 
     func disconnect() {
         disconnected = true
+        contentRefresh.didRefresh()
         scrollWork?.cancel()
         if configuration.proxy?.collectionVGrid === self {
             configuration.proxy?.collectionVGrid = nil

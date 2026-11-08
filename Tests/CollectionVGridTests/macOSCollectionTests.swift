@@ -209,7 +209,7 @@ struct MacOSCollectionVGridTests {
             #expect(view.computeItemSize(forWidth: 0).itemSize == .zero)
             view.disconnect()
         }
-        let item = HostingCollectionViewItem()
+        let item = HostingCollectionViewItem<Text>()
         item.configure(Text("First"), id: 1)
         let host = item.view.subviews.first
         item.prepareForReuse()

@@ -54,15 +54,15 @@ struct SafeAreaTests {
         }
     }
 
-    @Test
-    func `cell content uses its full bounds across updates`() async throws {
+    @Test(arguments: [true, false])
+    func `cell content uses its full bounds across updates`(usesFixedSize: Bool) async throws {
         let geometry = CellGeometry()
         let cell = HostingCollectionViewCell<CellContent>(frame: CGRect(x: 0, y: 0, width: 320, height: 180))
-        cell.setup(view: CellContent(geometry: geometry, color: .blue), id: 1)
+        cell.setup(view: CellContent(geometry: geometry, color: .blue), id: 1, usesFixedSize: usesFixedSize)
         let view = try #require(cell.contentView.subviews.first)
-        let host = try #require(view.next as? UIHostingController<AnyView>)
-        #expect(!host.safeAreaRegions.contains(.container))
-        #expect(host.safeAreaRegions.contains(.keyboard))
+        let host = try #require(view.next as? UIViewController)
+        let regions = try #require(host as? HostingSafeAreaConfiguration).safeAreaRegions
+        #expect(regions.isEmpty)
         let parent = UIViewController()
         let window = makeWindow(controller: parent)
         defer { window.isHidden = true }
@@ -71,7 +71,7 @@ struct SafeAreaTests {
         host.didMove(toParent: parent)
         host.additionalSafeAreaInsets = UIEdgeInsets(top: 30, left: 40, bottom: 30, right: 40)
         for id in [1, 2] {
-            cell.setup(view: CellContent(geometry: geometry, color: .red), id: id)
+            cell.setup(view: CellContent(geometry: geometry, color: .red), id: id, usesFixedSize: usesFixedSize)
             parent.view.layoutIfNeeded()
             try await Task.sleep(for: .milliseconds(100))
             #expect(geometry.size == cell.bounds.size)
@@ -92,6 +92,13 @@ struct SafeAreaTests {
         return window
     }
 }
+
+@MainActor
+private protocol HostingSafeAreaConfiguration {
+    var safeAreaRegions: SafeAreaRegions { get }
+}
+
+extension UIHostingController: HostingSafeAreaConfiguration {}
 
 @MainActor
 private final class CellGeometry {

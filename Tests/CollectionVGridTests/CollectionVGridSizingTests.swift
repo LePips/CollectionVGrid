@@ -46,20 +46,27 @@ struct CollectionVGridSizingTests {
         }
         grid.update(data: [0], layout: layout(.aspectRatio), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
         grid.bounds = CGRect(x: 0, y: 0, width: 210, height: 500)
-        grid.layoutSubviews()
+        grid.setNeedsLayout()
+        grid.layoutIfNeeded()
         let collectionView = try #require(grid.subviews.compactMap { $0 as? UICollectionView }.first)
         #expect(collectionView.flowLayout.itemSize.height == 50)
+        // A detached grid still has to commit a size resolved before Auto Layout
+        // gives its child bounds, rather than leaving zero-sized attributes.
+        let initialItem = try #require(collectionView.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
+        #expect(initialItem.size.height == 50)
 
         counter.height = 75
         grid.update(data: [0], layout: layout(.height), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
-        grid.layoutSubviews()
+        grid.setNeedsLayout()
+        grid.layoutIfNeeded()
         let item = try #require(collectionView.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
         #expect(item.size.height == 75)
         #expect(grid.computeItemSize(forWidth: 410).itemSize.height == 75)
 
         counter.height = 40
         grid.update(data: [0], layout: layout(.aspectRatio), isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
-        grid.layoutSubviews()
+        grid.setNeedsLayout()
+        grid.layoutIfNeeded()
         #expect(collectionView.flowLayout.itemSize.height == 40)
         #expect(grid.computeItemSize(forWidth: 410).itemSize.height == 80)
     }
@@ -102,7 +109,8 @@ struct CollectionVGridSizingTests {
         grid.setNeedsLayout()
         grid.layoutIfNeeded()
         let collection = try #require(grid.subviews.compactMap { $0 as? UICollectionView }.first)
-        #expect(abs(collection.bounds.width - width) < 0.5)
+        // A 1x display can round an exact half-point to either neighboring pixel.
+        #expect(abs(collection.bounds.width - width) <= 0.5)
         #expect(collection.numberOfItems(inSection: 0) == 9)
         let attributes = try (0 ..< 4).map { index in
             try #require(collection.collectionViewLayout.layoutAttributesForItem(at: IndexPath(item: index, section: 0)))
@@ -166,7 +174,7 @@ struct CollectionVGridSizingTests {
         #expect(counter.value == 0)
         grid.update(
             data: [0],
-            layout: .columns(2, insets: .init(), itemSpacing: 10, lineSpacing: 10),
+            layout: .columns(2, insets: .init(), itemSpacing: 10, lineSpacing: 10, itemSizing: .aspectRatio),
             isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic
         )
         #expect(grid.computeItemSize(forWidth: 210).itemSize.height == 50)
@@ -227,7 +235,8 @@ struct CollectionVGridSizingTests {
             2,
             insets: .init(),
             itemSpacing: 10,
-            lineSpacing: 10
+            lineSpacing: 10,
+            itemSizing: .aspectRatio
         )
 
         grid.update(
@@ -285,7 +294,8 @@ struct CollectionVGridSizingTests {
                 200,
                 insets: .init(),
                 itemSpacing: 10,
-                lineSpacing: 10
+                lineSpacing: 10,
+                itemSizing: .aspectRatio
             )
         )
 
@@ -304,7 +314,8 @@ struct CollectionVGridSizingTests {
                 0,
                 insets: .init(),
                 itemSpacing: 10,
-                lineSpacing: 10
+                lineSpacing: 10,
+                itemSizing: .aspectRatio
             )
         )
 
@@ -320,7 +331,8 @@ struct CollectionVGridSizingTests {
                 .nan,
                 insets: .init(),
                 itemSpacing: 10,
-                lineSpacing: 10
+                lineSpacing: 10,
+                itemSizing: .aspectRatio
             )
         )
         let minimumSize = invalidMinimumGrid.computeItemSize(forWidth: 100)
@@ -351,7 +363,7 @@ struct CollectionVGridSizingTests {
         grid.layoutSubviews()
         grid.update(
             data: [0],
-            layout: .columns(2, insets: .init(), itemSpacing: 10, lineSpacing: 10),
+            layout: .columns(2, insets: .init(), itemSpacing: 10, lineSpacing: 10, itemSizing: .aspectRatio),
             isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic,
             viewProvider: { _, _ in MeasuredItem(counter: replacement) }
         )
@@ -367,7 +379,8 @@ struct CollectionVGridSizingTests {
             2,
             insets: .init(),
             itemSpacing: 10,
-            lineSpacing: 10
+            lineSpacing: 10,
+            itemSizing: .aspectRatio
         ),
         data: [Int] = [0]
     ) -> UICollectionVGrid<Int, [Int], Int, MeasuredItem> {
@@ -395,7 +408,8 @@ struct CollectionVGridSizingTests {
                 2,
                 insets: .init(),
                 itemSpacing: 10,
-                lineSpacing: 10
+                lineSpacing: 10,
+                itemSizing: .aspectRatio
             ),
             onReachedBottomEdge: {},
             onReachedBottomEdgeOffset: .rows(0),

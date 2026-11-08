@@ -19,7 +19,7 @@ private typealias PlatformView = UIView
 @MainActor
 struct ItemRemeasurementTests {
 
-    @Test(arguments: [CollectionVGridLayout.ItemSizing.aspectRatio, .height])
+    @Test(arguments: [CollectionVGridLayout.ItemSizing.content, .aspectRatio, .height])
     func `publisher remeasures latest content and derived sizing`(sizing: CollectionVGridLayout.ItemSizing) async throws {
         let model = RemeasurementModel()
         let hosted = RemeasurementHost(model: model, sizing: sizing)
@@ -45,7 +45,7 @@ struct ItemRemeasurementTests {
         let expanded = grid.computeItemSize(forWidth: width).itemSize
         #expect(expanded.height > initial.height)
         let resized = grid.computeItemSize(forWidth: width * 2).itemSize
-        #expect(abs(resized.height - (sizing == .height ? expanded.height : expanded.height * 2)) < 0.01)
+        #expect(abs(resized.height - (sizing == .aspectRatio ? expanded.height * 2 : expanded.height)) < 0.01)
         #expect(try abs(displayedItemSize(grid).height - expanded.height) < 0.01)
 
         // A signal in the same update must measure the latest content.
@@ -127,9 +127,9 @@ struct ItemRemeasurementTests {
 
     private func availableWidth(_ grid: NativeGrid) throws -> CGFloat {
         #if os(macOS)
-        return grid.scrollView.contentSize.width
+        grid.scrollView.contentSize.width
         #else
-        return try #require(grid.subviews.compactMap { $0 as? UICollectionView }.first).bounds.width
+        try #require(grid.subviews.compactMap { $0 as? UICollectionView }.first).bounds.width
         #endif
     }
 }

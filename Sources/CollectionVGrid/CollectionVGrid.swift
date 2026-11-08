@@ -9,6 +9,7 @@ public struct CollectionVGrid<
 Data.Index == Int {
 
     let _id: KeyPath<Element, ID>
+    let identifier: (Element) -> ID
     let data: Data
     let layout: CollectionVGridLayout
     #if canImport(UIKit)
@@ -26,6 +27,7 @@ Data.Index == Int {
 
     init(
         id: KeyPath<Element, ID>,
+        identifier: ((Element) -> ID)? = nil,
         data: Data,
         layout: CollectionVGridLayout,
         onReachedBottomEdge: @escaping () -> Void = {},
@@ -35,6 +37,7 @@ Data.Index == Int {
         @ViewBuilder viewProvider: @escaping (Element, CollectionVGridLocation) -> Content
     ) {
         self._id = id
+        self.identifier = identifier ?? { $0[keyPath: id] }
         self.data = data
         self.layout = layout
         self.onReachedBottomEdge = onReachedBottomEdge
@@ -61,11 +64,13 @@ extension CollectionVGrid: UIViewRepresentable {
             proxy: proxy,
             viewProvider: viewProvider
         )
+        view.updateEnvironment(context.environment)
         view.configure(self)
         return view
     }
 
     public func updateUIView(_ view: UIViewType, context: Context) {
+        view.updateEnvironment(context.environment)
         view.configure(self)
         view.update(
             data: data,

@@ -42,6 +42,7 @@ public extension CollectionVGrid where Element: Identifiable, ID == Element.ID {
     ) {
         self.init(
             id: \.id,
+            identifier: { $0.id },
             data: uniqueElements,
             layout: layout,
             viewProvider: viewProvider
@@ -55,6 +56,7 @@ public extension CollectionVGrid where Element: Identifiable, ID == Element.ID {
     ) {
         self.init(
             id: \.id,
+            identifier: { $0.id },
             data: uniqueElements,
             layout: layout,
             viewProvider: { e, _ in viewProvider(e) }
@@ -73,6 +75,7 @@ public extension CollectionVGrid where Data == [Element], Element == Int, ID == 
     ) {
         self.init(
             id: \.self,
+            identifier: { $0 },
             data: Array(0 ..< count),
             layout: layout,
             viewProvider: { e, _ in viewProvider(e) }

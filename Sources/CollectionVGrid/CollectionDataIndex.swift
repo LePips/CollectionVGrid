@@ -61,7 +61,7 @@ struct CollectionDataIndex<ID: Hashable> {
         from data: Data, id: KeyPath<Data.Element, ID>, prefix: Int?
     ) -> Bool where Data.Index == Int {
         var unusedLookup: [ID: Int]?
-        return update(from: data, id: id, prefix: prefix, buildLookup: false, lookup: &unusedLookup)
+        return update(from: data, identifier: { $0[keyPath: id] }, prefix: prefix, buildLookup: false, lookup: &unusedLookup)
     }
 
     /// Structural updates need a lookup too. Validate uniqueness while building
@@ -70,7 +70,17 @@ struct CollectionDataIndex<ID: Hashable> {
     mutating func update<Data: Collection>(
         from data: Data, id: KeyPath<Data.Element, ID>, prefix: Int?, lookup: inout [ID: Int]?
     ) -> Bool where Data.Index == Int {
-        update(from: data, id: id, prefix: prefix, buildLookup: true, lookup: &lookup)
+        update(from: data, identifier: { $0[keyPath: id] }, prefix: prefix, buildLookup: true, lookup: &lookup)
+    }
+
+    /// Known Identifiable elements can read their ID directly, without dynamic
+    /// key-path projection for every element on every geometry-driven update.
+    /// Still read every ID: reference elements and computed identities can change.
+    @discardableResult
+    mutating func update<Data: Collection>(
+        from data: Data, identifier: (Data.Element) -> ID, prefix: Int?, lookup: inout [ID: Int]?
+    ) -> Bool where Data.Index == Int {
+        update(from: data, identifier: identifier, prefix: prefix, buildLookup: true, lookup: &lookup)
     }
 
     /// AppKit snapshots resolve identities outside structural updates. Retain a
@@ -79,10 +89,17 @@ struct CollectionDataIndex<ID: Hashable> {
     mutating func update<Data: Collection>(
         from data: Data, id: KeyPath<Data.Element, ID>, prefix: Int?, retainingLookup lookup: inout [ID: Int]
     ) -> Bool where Data.Index == Int {
+        update(from: data, identifier: { $0[keyPath: id] }, prefix: prefix, retainingLookup: &lookup)
+    }
+
+    @discardableResult
+    mutating func update<Data: Collection>(
+        from data: Data, identifier: (Data.Element) -> ID, prefix: Int?, retainingLookup lookup: inout [ID: Int]
+    ) -> Bool where Data.Index == Int {
         let previousStart = startIndex
         let previousIndices = explicitIndices
         var changedLookup: [ID: Int]?
-        let changed = update(from: data, id: id, prefix: prefix, lookup: &changedLookup)
+        let changed = update(from: data, identifier: identifier, prefix: prefix, lookup: &changedLookup)
         if let changedLookup {
             lookup = startIndex == 0 && explicitIndices.isEmpty
                 ? changedLookup
@@ -94,14 +111,14 @@ struct CollectionDataIndex<ID: Hashable> {
     }
 
     private mutating func update<Data: Collection>(
-        from data: Data, id: KeyPath<Data.Element, ID>, prefix: Int?,
+        from data: Data, identifier: (Data.Element) -> ID, prefix: Int?,
         buildLookup: Bool, lookup: inout [ID: Int]?
     ) -> Bool where Data.Index == Int {
         let limit = prefix ?? 0
         let values = limit > 0 ? data.prefix(limit) : data[..<data.endIndex]
         let changed = values.withContiguousStorageIfAvailable {
-            updateIDs(from: $0, id: id)
-        } ?? updateIDs(from: values, id: id)
+            updateIDs(from: $0, identifier: identifier)
+        } ?? updateIDs(from: values, identifier: identifier)
 
         lookup = nil
         if changed {
@@ -126,15 +143,18 @@ struct CollectionDataIndex<ID: Hashable> {
         return changed
     }
 
+    // Specialize the borrowed-buffer loop instead of advancing an opaque
+    // Sequence iterator and copying a generic element at every position.
+    @inline(__always)
     private mutating func updateIDs<Values: Sequence>(
-        from values: Values, id: KeyPath<Values.Element, ID>
+        from values: Values, identifier: (Values.Element) -> ID
     ) -> Bool {
         let oldIDs = ids
         var replacementIDs: [ID] = []
         var changedIDs = false
         var count = 0
         for value in values {
-            let valueID = value[keyPath: id]
+            let valueID = identifier(value)
             if !changedIDs, count >= oldIDs.count || oldIDs[count] != valueID {
                 replacementIDs.reserveCapacity(max(oldIDs.count, values.underestimatedCount))
                 replacementIDs.append(contentsOf: oldIDs.prefix(count))

@@ -5,9 +5,13 @@ import SwiftUI
 
 public struct CollectionVGridLayout: Equatable {
 
-    /// The first item's measurement to reuse for all items during resizing.
+    /// How the first item's measurement determines the uniform size of all items.
     public enum ItemSizing: Equatable, Sendable {
+        /// Measure the content at each item width. Use this for artwork with captions,
+        /// wrapping text, and other content whose whole height is not proportional.
+        case content
         /// Cache the measured width-to-height ratio and scale height with item width.
+        /// Only use this when the entire item, including any labels, scales proportionally.
         case aspectRatio
         /// Cache the measured height and keep it fixed as item width changes.
         case height
@@ -49,7 +53,7 @@ public struct CollectionVGridLayout: Equatable {
         insets: EdgeInsets = .init(top: 10, leading: 10, bottom: 10, trailing: 10),
         itemSpacing: CGFloat = 10,
         lineSpacing: CGFloat = 10,
-        itemSizing: ItemSizing = .aspectRatio
+        itemSizing: ItemSizing = .content
     ) -> CollectionVGridLayout {
         .init(
             insets: insets,
@@ -66,7 +70,7 @@ public struct CollectionVGridLayout: Equatable {
         insets: EdgeInsets = .init(top: 10, leading: 10, bottom: 10, trailing: 10),
         itemSpacing: CGFloat = 10,
         lineSpacing: CGFloat = 10,
-        itemSizing: ItemSizing = .aspectRatio
+        itemSizing: ItemSizing = .content
     ) -> CollectionVGridLayout {
         .init(
             insets: insets,

@@ -6,6 +6,43 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct ResizeLayoutPassTests {
+    @Test(arguments: [17, 100_001])
+    func `uniform sizing keeps distant rows correct after resizing`(itemCount: Int) throws {
+        let layout = CollectionVGridLayout.minWidth(200, insets: .init(), itemSpacing: 10, lineSpacing: 10)
+        let data = Array(0 ..< itemCount)
+        let grid = UICollectionVGrid(
+            id: \.self, data: data, layout: layout,
+            onReachedBottomEdge: {}, onReachedBottomEdgeOffset: .offset(0),
+            onReachedTopEdge: {}, onReachedTopEdgeOffset: .offset(0), proxy: nil
+        ) { _, _ in Color.blue.frame(height: 50) }
+        grid.update(data: data, layout: layout, isScrollEnabled: true, verticalScrollIndicatorVisibility: .automatic)
+        grid.frame = CGRect(x: 0, y: 0, width: 1180, height: 820)
+        grid.layoutIfNeeded()
+        let collection = try #require(grid.subviews.compactMap { $0 as? UICollectionView }.first)
+        #expect(collection.numberOfItems(inSection: 0) == itemCount)
+
+        // Advertising this optional selector forces UIKit to request the same
+        // size for every item during preparation, even for offscreen rows.
+        #expect(!grid.responds(to: #selector(UICollectionViewDelegateFlowLayout.collectionView(_:layout:sizeForItemAt:))))
+        for width: CGFloat in [1180, 850.25, 850, 849.75, 390, 1180] {
+            grid.frame.size.width = width
+            grid.layoutIfNeeded()
+            collection.layoutIfNeeded()
+            let expected = layout.itemWidth(for: width)
+            for index in [0, expected.columns - 1, expected.columns, itemCount / 2, itemCount - 1] {
+                let attributes = try #require(collection.collectionViewLayout.layoutAttributesForItem(at: IndexPath(
+                    item: index,
+                    section: 0
+                )))
+                #expect(abs(attributes.size.width - expected.width) <= 0.5)
+                #expect(attributes.size.height == 50)
+                #expect(abs(attributes.frame.minY - CGFloat(index / expected.columns) * 60) <= 0.5)
+            }
+            let rows = (itemCount + expected.columns - 1) / expected.columns
+            #expect(abs(collection.contentSize.height - CGFloat(rows * 60 - 10)) <= 0.5)
+        }
+    }
+
     @Test(arguments: [true, false])
     func `each resize layout pass uses the current width`(adaptiveColumns: Bool) throws {
         let layout = adaptiveColumns ? CollectionVGridLayout.minWidth(180) : .columns(3)
@@ -95,10 +132,8 @@ private final class RecordingResizeFlowLayout: CollectionVGridFlowLayout {
 
     override func prepare() {
         super.prepare()
-        if let collectionView,
-           let delegate = collectionView.delegate as? UICollectionViewDelegateFlowLayout,
-           let size = delegate.collectionView?(collectionView, layout: self, sizeForItemAt: IndexPath(item: 0, section: 0))
-        {
+        if let collectionView {
+            let size = itemSize
             let frames = (0 ..< collectionView.numberOfItems(inSection: 0)).compactMap {
                 super.layoutAttributesForItem(at: IndexPath(item: $0, section: 0))?.frame
             }

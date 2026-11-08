@@ -35,28 +35,25 @@ final class CollectionScrollView: NSScrollView {
 }
 
 /// Keep the hosting view across reuse; changing the identity resets SwiftUI state for a new item.
-final class HostingCollectionViewItem: NSCollectionViewItem {
-    private var host: NSHostingView<AnyView>?
+final class HostingCollectionViewItem<Content: View>: NSCollectionViewItem {
+    private var host: NSHostingView<CollectionItemContent<Content>>?
+    private(set) var contentGeneration = 0
 
     override func loadView() {
         view = NSView()
     }
 
-    func configure(_ content: some View, id: AnyHashable) {
-        let root = AnyView(content.id(id))
+    func configure(_ content: Content, id: AnyHashable, generation: Int = 0, environment: EnvironmentValues? = nil) {
+        contentGeneration = generation
+        let root = CollectionItemContent(content: content, identity: id, environment: environment)
         if let host {
             host.rootView = root
         } else {
             let host = NSHostingView(rootView: root)
             host.sizingOptions = []
-            host.translatesAutoresizingMaskIntoConstraints = false
+            host.frame = view.bounds
+            host.autoresizingMask = [.width, .height]
             view.addSubview(host)
-            NSLayoutConstraint.activate([
-                host.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                host.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                host.topAnchor.constraint(equalTo: view.topAnchor),
-                host.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            ])
             self.host = host
         }
     }
@@ -151,15 +148,29 @@ final class CollectionLayout: NSCollectionViewLayout {
         let lower = horizontal ? rect.minX : rect.minY
         let upper = horizontal ? rect.maxX : rect.maxY
         let inset = horizontal ? insets.left : headerHeight + insets.top
-        let stride = max(1, horizontal ? itemSize.width + itemSpacing : itemSize.height + lineSpacing)
+        let stride = horizontal ? itemSize.width + itemSpacing : itemSize.height + lineSpacing
         let first: Int
         let last: Int
         if columnOffsets.isNotEmpty {
             first = max(0, columnIndex(at: lower) - 1)
             last = min(groups - 1, columnIndex(at: upper) + 1)
         } else {
-            first = Int(floor((lower - inset) / stride).clamped(to: 0 ... CGFloat(groups - 1)))
-            last = Int(floor((upper - inset) / stride).clamped(to: 0 ... CGFloat(groups - 1)))
+            // Subpoint items still have subpoint positions. Rounding the stride
+            // to one point skips visible groups during very narrow resizes.
+            guard stride.isFiniteAndPositive else { return attributes }
+
+            let lastGroup = groups - 1
+            func groupIndex(at position: CGFloat) -> Int {
+                let index = floor((position - inset) / stride)
+                // Clamp before conversion, including overflow from dividing by
+                // a tiny positive stride and nonfinite query rectangles.
+                guard index > 0 else { return 0 }
+                guard index < CGFloat(lastGroup) else { return lastGroup }
+
+                return Int(index)
+            }
+            first = groupIndex(at: lower)
+            last = groupIndex(at: upper)
         }
         guard first <= last else { return attributes }
 
