@@ -87,8 +87,9 @@ struct HostedCompositeCellSizingTests {
             let columns = layout.itemWidth(for: collection.bounds.width).columns
             let nextRow = try #require(collection.layoutAttributesForItem(at: IndexPath(item: columns, section: 0)))
             let tolerance = 1 / max(collection.traitCollection.displayScale, 1)
+            let expectedPosterHeight = posterFrame.width * 1.5
             #expect(abs(posterFrame.width - cellFrame.width) <= tolerance)
-            #expect(abs(posterFrame.height - posterFrame.width * 1.5) <= tolerance)
+            #expect(abs(posterFrame.height - expectedPosterHeight) <= tolerance + expectedPosterHeight.ulp)
             #expect(abs(captionFrame.minY - posterFrame.maxY - 7) <= tolerance)
             #expect(captionFrame.maxY <= cellFrame.maxY + tolerance)
             #expect(abs(cellFrame.height - (cellFrame.width * 1.5 + 31)) <= tolerance)

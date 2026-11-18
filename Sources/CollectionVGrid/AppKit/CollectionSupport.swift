@@ -62,6 +62,7 @@ final class HostingCollectionViewItem<Content: View>: NSCollectionViewItem {
 /// Uniform layouts compute only attributes intersecting the viewport, regardless of data count.
 /// Variadic horizontal layouts cache column offsets and use binary search when scrolling.
 final class CollectionLayout: NSCollectionViewLayout {
+    var isRightToLeft = false
     var horizontal = false
     var lanes = 1
     var itemSize = CGSize.zero
@@ -128,7 +129,8 @@ final class CollectionLayout: NSCollectionViewLayout {
             x = columnOffsets.indices.contains(group) ? columnOffsets[group] : insets.left + CGFloat(group) * (itemSize.width + itemSpacing)
             y = insets.top + CGFloat(lane) * (itemSize.height + lineSpacing)
         } else {
-            x = insets.left + CGFloat(lane) * (itemSize.width + itemSpacing)
+            let leading = insets.left + CGFloat(lane) * (itemSize.width + itemSpacing)
+            x = isRightToLeft ? collectionViewContentSize.width - leading - size.width : leading
             y = headerHeight + insets.top + CGFloat(group) * (itemSize.height + lineSpacing)
         }
         attributes.frame = CGRect(origin: CGPoint(x: x, y: y), size: size)

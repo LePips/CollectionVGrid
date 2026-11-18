@@ -25,7 +25,7 @@ struct ContentView: View {
     @State
     private var itemSizeChanges = PassthroughSubject<Void, Never>()
 
-    @StateObject
+    @State
     private var proxy = CollectionVGridProxy()
 
     private var gridLayout: CollectionVGridLayout {

@@ -1,7 +1,6 @@
 import Foundation
-import SwiftUI
 
-public class CollectionVGridProxy: ObservableObject {
+public class CollectionVGridProxy {
 
     #if os(macOS)
     weak var collectionVGrid: _NSCollectionVGrid?
@@ -19,7 +18,6 @@ public class CollectionVGridProxy: ObservableObject {
     /// its resize proportions from the new measurement; no sizing values are required.
     @MainActor
     public func redraw() {
-        objectWillChange.send()
         collectionVGrid?.snapshotReload()
     }
 

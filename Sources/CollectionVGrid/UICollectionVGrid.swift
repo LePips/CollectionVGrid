@@ -220,6 +220,10 @@ public class UICollectionVGrid<
 
     func updateEnvironment(_ environment: EnvironmentValues) {
         let signature = ContentMeasurementEnvironment(environment)
+        if measurementEnvironment?.layoutDirection != signature.layoutDirection {
+            collectionView.semanticContentAttribute = signature.layoutDirection == .rightToLeft ? .forceRightToLeft : .forceLeftToRight
+            collectionView.collectionViewLayout.invalidateLayout()
+        }
         let measurementChanged = measurementEnvironment != signature
         measurementEnvironment = signature
         contentEnvironment = environment
@@ -816,6 +820,11 @@ protocol CollectionVGridItemSizeProvider: AnyObject {
 }
 
 class CollectionVGridFlowLayout: UICollectionViewFlowLayout {
+    // Build each row from its logical leading edge, including incomplete rows.
+    override var flipsHorizontallyInOppositeLayoutDirection: Bool {
+        true
+    }
+
     override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
         // A representable can attach and receive data before its first size.
         // Zero-sized items then all intersect the same origin, which makes UIKit

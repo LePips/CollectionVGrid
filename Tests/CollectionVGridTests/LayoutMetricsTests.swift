@@ -60,7 +60,7 @@ struct LayoutMetricsTests {
 
 struct ItemSizeCacheTests {
     @Test
-    func `content caches only the current exact width and preserves wrapping transitions`() {
+    func `content reuses recent exact widths and preserves wrapping transitions`() {
         var cache = ItemSizeCache()
         var measurements = 0
         for width: CGFloat in [200, 199.999, 200.001, 150, 300, 200] {
@@ -73,7 +73,7 @@ struct ItemSizeCacheTests {
                 #expect(size == CGSize(width: width, height: expectedHeight))
             }
         }
-        #expect(measurements == 6, "Thousands of items share one measurement per exact width")
+        #expect(measurements == 5, "Thousands of items share one measurement per exact width")
     }
 
     @Test

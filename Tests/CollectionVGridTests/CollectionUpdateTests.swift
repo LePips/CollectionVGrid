@@ -115,8 +115,8 @@ struct CollectionVGridUpdateTests {
             try await settle()
             #expect(host.frame.origin == cell.contentView.bounds.origin)
             // UIKit rounds both autoresizing and constraints to display pixels.
-            let tolerance = 0.5 / max(cell.traitCollection.displayScale, 1)
-            #expect(abs(host.frame.width - cell.contentView.bounds.width) <= tolerance)
+            let scale = max(cell.traitCollection.displayScale, 1)
+            #expect(abs(host.frame.width * scale - cell.contentView.bounds.width * scale) <= 0.5)
             #expect(host.frame.height == cell.contentView.bounds.height)
             #expect(seen.last == 1)
         }

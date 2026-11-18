@@ -175,6 +175,7 @@ public final class NSCollectionVGrid<Element, Data: Collection, ID: Hashable, Co
 
     func updateEnvironment(_ environment: EnvironmentValues) {
         let signature = ContentMeasurementEnvironment(environment)
+        collectionLayout.isRightToLeft = signature.layoutDirection == .rightToLeft
         let measurementChanged = measurementEnvironment != signature
         measurementEnvironment = signature
         contentEnvironment = environment

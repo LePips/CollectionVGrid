@@ -65,6 +65,8 @@ struct LibraryResizeTests {
     @Test
     func `navigation bar inset changes do not remeasure or move content`() {
         let fixture = LibraryFixture()
+        // Hold the size class fixed while the simulated navigation bar changes its inset.
+        fixture.host.traitOverrides.horizontalSizeClass = .regular
         fixture.layOut(width: 1180)
         fixture.scroll(toItem: 60)
         let offset = fixture.collection.contentOffset.y
